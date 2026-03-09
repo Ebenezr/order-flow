@@ -35,14 +35,6 @@ public class OrderService {
         LocalDateTime start = LocalDateTime.now();
         String orderId = UUID.randomUUID().toString();
 
-        Logger.info(
-                orderId,
-                "ORDER",
-                "ENTRY_CREATE_ORDER",
-                "START",
-                "Creating new order"
-        );
-
         Order order = Order.builder()
                 .orderId(orderId)
                 .customerId(customerId)
@@ -54,127 +46,69 @@ public class OrderService {
         OrderStateMachine.validate(order.getStatus(), OrderStatus.PENDING_PAYMENT);
         order.setStatus(OrderStatus.PENDING_PAYMENT);
 
-        return orderRepository.save(order)
-                .flatMap(savedOrder ->
-                        items
-                                .doOnNext(item -> item.setOrderId(orderId))
-                                .flatMap(orderItemRepository::save)
-                                .then(Mono.just(savedOrder))
-                )
-                .flatMap(savedOrder -> {
+        Mono<Order> pipeline =
+                orderRepository.save(order)
+                        .flatMap(savedOrder ->
+                                items
+                                        .doOnNext(item -> item.setOrderId(orderId))
+                                        .flatMap(orderItemRepository::save)
+                                        .then(Mono.just(savedOrder))
+                        )
+                        .flatMap(savedOrder -> {
 
-                    Logger.info(
-                            orderId,
-                            "ORDER",
-                            "CREATE_ORDER",
-                            Logger.processDuration(start),
-                            "Order persisted successfully"
-                    );
+                            OrderCreatedPayload payload =
+                                    OrderCreatedPayload.builder()
+                                            .orderId(orderId)
+                                            .customerId(customerId)
+                                            .totalAmount(savedOrder.getTotalAmount())
+                                            .build();
 
-                    // Create event payload
-                    OrderCreatedPayload payload =
-                            OrderCreatedPayload.builder()
-                                    .orderId(orderId)
-                                    .customerId(customerId)
-                                    .totalAmount(savedOrder.getTotalAmount())
-                                    .build();
+                            BaseEvent<OrderCreatedPayload> event =
+                                    BaseEvent.<OrderCreatedPayload>builder()
+                                            .eventId(UUID.randomUUID())
+                                            .eventType("OrderCreated")
+                                            .version(1)
+                                            .occurredAt(Instant.now())
+                                            .payload(payload)
+                                            .build();
 
-                    BaseEvent<OrderCreatedPayload> event =
-                            BaseEvent.<OrderCreatedPayload>builder()
-                                    .eventId(UUID.randomUUID())
-                                    .eventType("OrderCreated")
-                                    .version(1)
-                                    .occurredAt(Instant.now())
-                                    .payload(payload)
-                                    .build();
+                            return kafkaProducerService
+                                    .send(ORDER_CREATED_TOPIC, orderId, event)
+                                    .thenReturn(savedOrder);
+                        });
 
-                    return kafkaProducerService
-                            .send(ORDER_CREATED_TOPIC, orderId, event)
-                            .doOnSuccess(v ->
-                                    Logger.info(
-                                            orderId,
-                                            "KAFKA",
-                                            "PUBLISH_EVENT",
-                                            Logger.processDuration(start),
-                                            "order.created event published"
-                                    )
-                            )
-                            .thenReturn(savedOrder);
-                }).doOnError(throwable -> {
-                    Logger.error(
-                            orderId,
-                            "ORDER",
-                            "ERROR_CREATE_ORDER",
-                            Logger.processDuration(start),
-                            "Error creating order: " + throwable.getMessage()
-                    );
-                });
+        return Logger.logMono(pipeline, "ORDER", "CREATE_ORDER", start);
     }
+
 
     public Mono<Order> getOrder(String orderId) {
 
         LocalDateTime start = LocalDateTime.now();
 
-        Logger.info(
-                orderId,
+        Mono<Order> pipeline =
+                orderRepository
+                        .findByOrderId(orderId)
+                        .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)));
+
+        return Logger.logMono(
+                pipeline,
                 "ORDER",
                 "GET_ORDER",
-                "START",
-                "Fetching order"
+                start
         );
-
-        return orderRepository
-                .findByOrderId(orderId)
-                .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
-                .doOnSuccess(order ->
-                        Logger.info(
-                                orderId,
-                                "ORDER",
-                                "GET_ORDER",
-                                Logger.processDuration(start),
-                                "Order retrieved successfully"
-                        )
-                ).doOnError(throwable -> {
-                    Logger.error(
-                            orderId,
-                            "ORDER",
-                            "ERROR_GET_ORDER",
-                            Logger.processDuration(start),
-                            "Error fetching order: " + throwable.getMessage()
-                    );
-                });
     }
-
     public Flux<OrderItem> getOrderItems(String orderId) {
 
         LocalDateTime start = LocalDateTime.now();
 
-        Logger.info(
-                orderId,
+        Flux<OrderItem> pipeline =
+                orderItemRepository.findByOrderId(orderId);
+
+        return Logger.logFlux(
+                pipeline,
                 "ORDER",
                 "GET_ORDER_ITEMS",
-                "START",
-                "Fetching order items"
+                start
         );
-
-        return orderItemRepository
-                .findByOrderId(orderId)
-                .doOnComplete(() ->
-                        Logger.info(
-                                orderId,
-                                "ORDER",
-                                "GET_ORDER_ITEMS",
-                                Logger.processDuration(start),
-                                "Order items retrieved"
-                        )
-                ).doOnError(throwable -> {
-                    Logger.error(
-                            orderId,
-                            "ORDER",
-                            "ERROR_GET_ORDER_ITEMS",
-                            Logger.processDuration(start),
-                            "Error fetching order items: " + throwable.getMessage()
-                    );
-                });
     }
 }
