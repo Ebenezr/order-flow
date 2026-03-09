@@ -52,9 +52,18 @@ public class OrderService {
                                 items
                                         .doOnNext(item -> item.setOrderId(orderId))
                                         .flatMap(orderItemRepository::save)
-                                        .then(Mono.just(savedOrder))
+                                        .collectList()
+                                        .flatMap(savedItems -> {
+                                            double totalAmount = savedItems.stream()
+                                                    .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                                                    .sum();
+                                            savedOrder.setTotalAmount(totalAmount);
+                                            return orderRepository.save(savedOrder);
+                                        })
                         )
                         .flatMap(savedOrder -> {
+
+
 
                             OrderCreatedPayload payload =
                                     OrderCreatedPayload.builder()
@@ -108,6 +117,29 @@ public class OrderService {
                 pipeline,
                 "ORDER",
                 "GET_ORDER_ITEMS",
+                start
+        );
+    }
+
+    public Mono<Order> cancelOrder(String orderId) {
+
+        LocalDateTime start = LocalDateTime.now();
+
+        Mono<Order> pipeline =
+                orderRepository
+                        .findByOrderId(orderId)
+                        .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
+                        .flatMap(order -> {
+                            OrderStateMachine.validate(order.getStatus(), OrderStatus.CANCELLED);
+                            order.setStatus(OrderStatus.CANCELLED);
+                            order.setUpdatedAt(LocalDateTime.now());
+                            return orderRepository.save(order);
+                        });
+
+        return Logger.logMono(
+                pipeline,
+                "ORDER",
+                "CANCEL_ORDER",
                 start
         );
     }
