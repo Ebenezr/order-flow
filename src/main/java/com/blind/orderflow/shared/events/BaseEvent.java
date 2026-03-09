@@ -1,13 +1,14 @@
 package com.blind.orderflow.shared.events;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BaseEvent<T> {
 
     private UUID eventId;
