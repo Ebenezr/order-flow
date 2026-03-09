@@ -54,10 +54,22 @@ public class OrderService {
                                         .flatMap(orderItemRepository::save)
                                         .collectList()
                                         .flatMap(savedItems -> {
-                                            double totalAmount = savedItems.stream()
+                                            double subtotal = savedItems.stream()
                                                     .mapToDouble(item -> item.getPrice() * item.getQuantity())
                                                     .sum();
-                                            savedOrder.setTotalAmount(totalAmount);
+                                            double vat = subtotal * 0.15;
+
+                                            double serviceCharge = 0;
+
+                                            double discount = 0;
+
+                                            double total = subtotal + vat + serviceCharge - discount;
+
+                                            savedOrder.setTotalAmount(total);
+                                            savedOrder.setServiceCharge(serviceCharge);
+                                            savedOrder.setDiscount(discount);
+                                            savedOrder.setVat(vat);
+                                            savedOrder.setSubtotal(subtotal);
                                             return orderRepository.save(savedOrder);
                                         })
                         )
