@@ -125,6 +125,14 @@ public class OrderService {
 
         LocalDateTime start = LocalDateTime.now();
 
+        Logger.info(
+                orderId,
+                "ORDER",
+                "CANCEL_ORDER",
+                "START",
+                "Cancelling order"
+        );
+
         Mono<Order> pipeline =
                 orderRepository
                         .findByOrderId(orderId)
@@ -140,6 +148,40 @@ public class OrderService {
                 pipeline,
                 "ORDER",
                 "CANCEL_ORDER",
+                start
+        );
+    }
+
+    public Mono<Order> markPaymentConfirmed(String orderId) {
+
+        LocalDateTime start = LocalDateTime.now();
+
+        Logger.info(
+                orderId,
+                "ORDER",
+                "PAYMENT_CONFIRMED",
+                "START",
+                "Marking order as payment confirmed"
+        );
+
+        Mono<Order> pipeline =
+                orderRepository
+                        .findByOrderId(orderId)
+                        .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
+                        .flatMap(order -> {
+
+                            OrderStateMachine.validate(order.getStatus(), OrderStatus.CONFIRMED);
+
+                            order.setStatus(OrderStatus.CONFIRMED);
+                            order.setUpdatedAt(LocalDateTime.now());
+
+                            return orderRepository.save(order);
+                        });
+
+        return Logger.logMono(
+                pipeline,
+                "ORDER",
+                "PAYMENT_CONFIRMED",
                 start
         );
     }
