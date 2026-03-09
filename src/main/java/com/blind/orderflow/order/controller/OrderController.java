@@ -60,4 +60,16 @@ public class OrderController {
                                 )
                 );
     }
+
+        @PostMapping("/{orderId}/cancel")
+        public Mono<ApiResponse<Order>> cancelOrder(@PathVariable String orderId) {
+            return orderService
+                    .cancelOrder(orderId)
+                    .flatMap(order ->
+                            ResponseFactory.getRequestRefId()
+                                    .flatMap(requestId ->
+                                            ResponseFactory.success(order, requestId)
+                                    )
+                    );
+        }
 }
