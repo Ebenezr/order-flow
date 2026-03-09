@@ -28,7 +28,10 @@ public class OrderController {
         return orderService
                 .createOrder(customerId, items)
                 .flatMap(order ->
-                        ResponseFactory.success(order, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                                        ResponseFactory.success(order, requestId)
+                                )
                 );
     }
 
@@ -38,7 +41,10 @@ public class OrderController {
         return orderService
                 .getOrder(orderId)
                 .flatMap(order ->
-                        ResponseFactory.success(order, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                                        ResponseFactory.success(order, requestId)
+                                )
                 );
     }
 
@@ -48,7 +54,10 @@ public class OrderController {
         return orderService.getOrderItems(orderId)
                 .collectList()
                 .flatMap(items ->
-                        ResponseFactory.success(items, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                                        ResponseFactory.success(items, requestId)
+                                )
                 );
     }
 }

@@ -1,6 +1,8 @@
 package com.blind.orderflow.shared.utils.logging;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -54,5 +56,83 @@ public final class Logger {
         long remainingMillis = millis % 1000;
 
         return seconds + "s " + remainingMillis + "ms";
+    }
+
+    public static <T> Mono<T> logMono(Mono<T> mono,
+                                      String module,
+                                      String process,
+                                      LocalDateTime startTime) {
+
+        return Mono.deferContextual(ctx -> {
+
+            String requestId = ctx.getOrDefault("correlationId", "N/A");
+
+            Logger.info(
+                    requestId,
+                    module,
+                    process,
+                    "START",
+                    "Process started"
+            );
+
+            return mono
+                    .doOnSuccess(result ->
+                            Logger.info(
+                                    requestId,
+                                    module,
+                                    process,
+                                    Logger.processDuration(startTime),
+                                    "Process completed"
+                            )
+                    )
+                    .doOnError(error ->
+                            Logger.error(
+                                    requestId,
+                                    module,
+                                    process,
+                                    Logger.processDuration(startTime),
+                                    error.getMessage()
+                            )
+                    );
+        });
+    }
+
+    public static <T> Flux<T> logFlux(Flux<T> flux,
+                                      String module,
+                                      String process,
+                                      LocalDateTime startTime) {
+
+        return Flux.deferContextual(ctx -> {
+
+            String requestId = ctx.getOrDefault("correlationId", "N/A");
+
+            Logger.info(
+                    requestId,
+                    module,
+                    process,
+                    "START",
+                    "Process started"
+            );
+
+            return flux
+                    .doOnComplete(() ->
+                            Logger.info(
+                                    requestId,
+                                    module,
+                                    process,
+                                    Logger.processDuration(startTime),
+                                    "Process completed"
+                            )
+                    )
+                    .doOnError(error ->
+                            Logger.error(
+                                    requestId,
+                                    module,
+                                    process,
+                                    Logger.processDuration(startTime),
+                                    error.getMessage()
+                            )
+                    );
+        });
     }
 }
