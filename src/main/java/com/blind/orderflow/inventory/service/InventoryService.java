@@ -6,6 +6,7 @@ import com.blind.orderflow.inventory.repository.InventoryRepository;
 import com.blind.orderflow.inventory.repository.InventoryReservationRepository;
 import com.blind.orderflow.order.repository.OrderItemRepository;
 import com.blind.orderflow.shared.events.BaseEvent;
+import com.blind.orderflow.shared.events.InventoryFailedPayload;
 import com.blind.orderflow.shared.events.InventoryReservedPayload;
 import com.blind.orderflow.shared.kafka.KafkaProducerService;
 import com.blind.orderflow.shared.utils.logging.Logger;
@@ -44,9 +45,7 @@ public class InventoryService {
                                 )
                                 .flatMap(rows -> {
                                     if (rows == 0) {
-                                        return Mono.error(
-                                                new RuntimeException("Out of stock for " + item.getProductId())
-                                        );
+                                        return publishInventoryFailed(orderId, item.getProductId());
                                     }
                                     InventoryReservation reservation =
                                             InventoryReservation.builder()
@@ -133,6 +132,37 @@ public class InventoryService {
                                 .then(reservationRepository.delete(res))
                 )
                 .then();
+    }
+
+    private Mono<Void> publishInventoryFailed(String orderId, String productId) {
+
+        Logger.info(
+                orderId,
+                "INVENTORY",
+                "PUBLISH_INVENTORY_FAILED",
+                "START",
+                "Publishing inventory failed event for order"
+        );
+
+        BaseEvent<InventoryFailedPayload> event =
+                BaseEvent.<InventoryFailedPayload>builder()
+                        .eventId(UUID.randomUUID())
+                        .eventType("InventoryFailed")
+                        .version(1)
+                        .occurredAt(Instant.now())
+                        .payload(
+                                InventoryFailedPayload.builder()
+                                        .orderId(orderId)
+                                        .reason("Out of stock for " + productId)
+                                        .build()
+                        )
+                        .build();
+
+        return kafkaProducerService.send(
+                KafkaConfig.INVENTORY_FAILED_TOPIC,
+                orderId,
+                event
+        );
     }
 
 }
