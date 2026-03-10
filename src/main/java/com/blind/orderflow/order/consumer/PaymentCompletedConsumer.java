@@ -35,12 +35,12 @@ public class PaymentCompletedConsumer {
 
         orderService.getOrder(payload.getOrderId())
                 .zipWith(orderService.getOrderItems(payload.getOrderId()).collectList())
-                .doOnNext(tuple -> {
+                .flatMap(tuple -> {
 
                     Order order = tuple.getT1();
                     List<OrderItem> items = tuple.getT2();
 
-                    receiptService.printReceipt(order, items, payload.getTransactionId());
+                    return receiptService.printReceipt(order, items, payload.getTransactionId());
                 }).doOnError(e -> Logger.error(
                         payload.getOrderId(),
                         "ORDER",

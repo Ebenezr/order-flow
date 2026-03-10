@@ -5,6 +5,8 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
+
 public interface KitchenOrderRepository
         extends ReactiveCrudRepository<KitchenOrder, Long> {
 
@@ -13,4 +15,5 @@ public interface KitchenOrderRepository
     Flux<KitchenOrder> findByStatus(String status);
     Mono<KitchenOrder> findByKitchenOrderId(String kitchenOrderId);
 
+    Flux<KitchenOrder> findByStatusAndCreatedAtBetween(String status, LocalDateTime from, LocalDateTime to);
 }
