@@ -23,15 +23,27 @@ public class InventoryPaymentCompletedConsumer {
         PaymentCompletedPayload payload =
                 mapper.convertValue(event.getPayload(), PaymentCompletedPayload.class);
 
-        Logger.info(
-                payload.getOrderId(),
-                "INVENTORY",
-                "PAYMENT_COMPLETED_RECEIVED",
-                "INFO",
-                "Received payment completed event, confirming inventory reservation"
-        );
+
 
         inventoryService.confirmReservation(payload.getOrderId())
+                .doOnError(throwable -> {
+                    Logger.error(
+                            payload.getOrderId(),
+                            "INVENTORY",
+                            "CONFIRM_RESERVATION",
+                            "ERROR",
+                            "Failed to confirm inventory reservation: " + throwable.getMessage()
+                    );
+                })
+                .doOnSuccess(result -> {
+                    Logger.info(
+                            payload.getOrderId(),
+                            "INVENTORY",
+                            "CONFIRM_RESERVATION",
+                            "SUCCESS",
+                            "Inventory reservation confirmed successfully"
+                    );
+                })
                 .subscribe();
     }
 }

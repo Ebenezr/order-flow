@@ -30,13 +30,6 @@ public class PaymentCompletedConsumer {
 
         PaymentCompletedPayload payload =
                 mapper.convertValue(event.getPayload(), PaymentCompletedPayload.class);
-        Logger.info(
-                payload.getOrderId(),
-                "ORDER",
-                "PAYMENT_COMPLETED_RECEIVED",
-                "INFO",
-                "Received payment completed event, confirming order and printing receipt"
-        );
 
         orderService.confirmOrder(payload.getOrderId()).subscribe();
 
@@ -48,7 +41,19 @@ public class PaymentCompletedConsumer {
                     List<OrderItem> items = tuple.getT2();
 
                     receiptService.printReceipt(order, items, payload.getTransactionId());
-                })
+                }).doOnError(e -> Logger.error(
+                        payload.getOrderId(),
+                        "ORDER",
+                        "RECEIPT_PRINT_FAILED",
+                        "ERROR",
+                        "Failed to print receipt: " + e.getMessage()
+                )).doOnSuccess(e -> Logger.info(
+                        payload.getOrderId(),
+                        "ORDER",
+                        "RECEIPT_PRINTED",
+                        "INFO",
+                        "Receipt printed successfully"
+                ))
                 .subscribe();
     }
 }

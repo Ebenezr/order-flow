@@ -24,15 +24,26 @@ public class InventoryPaymentFailedConsumer {
         PaymentFailedPayload payload =
                 mapper.convertValue(event.getPayload(), PaymentFailedPayload.class);
 
-        Logger.info(
-                payload.getOrderId(),
-                "INVENTORY",
-                "PAYMENT_FAILED_RECEIVED",
-                "INFO",
-                "Received payment failed event, releasing inventory reservation"
-        );
 
         inventoryService.releaseReservation(payload.getOrderId())
+                .doOnError(throwable -> {
+                    Logger.error(
+                            payload.getOrderId(),
+                            "INVENTORY",
+                            "RELEASE_RESERVATION",
+                            "ERROR",
+                            "Failed to release inventory reservation: " + throwable.getMessage()
+                    );
+                })
+                .doOnSuccess(
+                        result -> Logger.info(
+                                payload.getOrderId(),
+                                "INVENTORY",
+                                "RELEASE_RESERVATION",
+                                "SUCCESS",
+                                "Inventory reservation released successfully"
+                        )
+                )
                 .subscribe();
     }
 }

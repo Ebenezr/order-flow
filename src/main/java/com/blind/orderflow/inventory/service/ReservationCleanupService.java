@@ -2,6 +2,7 @@ package com.blind.orderflow.inventory.service;
 
 import com.blind.orderflow.inventory.repository.InventoryRepository;
 import com.blind.orderflow.inventory.repository.InventoryReservationRepository;
+import com.blind.orderflow.shared.utils.logging.Logger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,7 +37,14 @@ public class ReservationCleanupService {
                                 .then(reservationRepository.save(res));
                     })
             )
-            .doOnNext(r -> log.info("Released expired reservation {}", r.getReservationId()))
+            .doOnNext(r ->
+                    Logger.info(
+                            r.getOrderId(),
+                            "INVENTORY",
+                            "RESERVATION_EXPIRED",
+                            "INFO",
+                            "Released expired reservation for product " + r.getProductId()
+                    ))
             .subscribe();
     }
 }

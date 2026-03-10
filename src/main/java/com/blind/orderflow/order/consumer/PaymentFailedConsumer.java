@@ -26,15 +26,20 @@ public class PaymentFailedConsumer {
         PaymentFailedPayload payload =
                 mapper.convertValue(event.getPayload(), PaymentFailedPayload.class);
 
-        Logger.info(
-                payload.getOrderId(),
-                "ORDER",
-                "PAYMENT_FAILED_RECEIVED",
-                "INFO",
-                "Received payment failed event, canceling order"
-        );
-
         orderService.cancelOrder(payload.getOrderId())
+                .doOnError(e -> Logger.error(
+                        payload.getOrderId(),
+                        "ORDER",
+                        "ORDER_CANCEL_FAILED",
+                        "ERROR",
+                        "Failed to cancel order: " + e.getMessage()
+                )).doOnSuccess(e -> Logger.info(
+                        payload.getOrderId(),
+                        "ORDER",
+                        "ORDER_CANCELED",
+                        "INFO",
+                        "Order canceled successfully"
+                ))
                 .subscribe();
     }
 }
