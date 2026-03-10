@@ -41,6 +41,10 @@ public class KitchenService {
         return kitchenRepository.findByStatus("RECEIVED");
     }
 
+    public Flux<KitchenOrder> getOrdersByStatus(String status) {
+        return kitchenRepository.findByStatus(status);
+    }
+
     public Mono<KitchenOrder> startPreparing(String kitchenOrderId) {
 
         Logger.info(
@@ -94,4 +98,6 @@ public class KitchenService {
                                 .thenReturn(saved)
                 );
     }
+
+
 }

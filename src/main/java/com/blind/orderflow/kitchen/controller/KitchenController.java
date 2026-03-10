@@ -23,6 +23,15 @@ public class KitchenController {
                 );
     }
 
+    @GetMapping("/orders/status")
+    public Mono<?> getOrdersByStatus(@RequestParam String status) {
+        return kitchenService.getOrdersByStatus(status)
+                .collectList()
+                .flatMap(orders ->
+                        ResponseFactory.success(orders, ResponseFactory.newRequestRefId())
+                );
+    }
+
     @PutMapping("/orders/{orderId}/start")
     public Mono<?> startPreparing(@PathVariable String orderId) {
 
