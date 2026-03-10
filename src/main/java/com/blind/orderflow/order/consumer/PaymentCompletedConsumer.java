@@ -25,7 +25,7 @@ public class PaymentCompletedConsumer {
     private final ReceiptService receiptService;
     private final ObjectMapper mapper;
 
-    @KafkaListener(topics = KafkaConfig.PAYMENT_COMPLETED_TOPIC)
+    @KafkaListener(topics = KafkaConfig.PAYMENT_COMPLETED_TOPIC,groupId = "order-group")
     public void handlePaymentCompleted(BaseEvent<?> event) {
 
         PaymentCompletedPayload payload =

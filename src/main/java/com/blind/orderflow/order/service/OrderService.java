@@ -221,4 +221,27 @@ public class OrderService {
                 start
         );
     }
+
+    public Mono<Order> updateOrderStatus(String orderId, OrderStatus status) {
+
+        Logger.info(
+                orderId,
+                "ORDER",
+                "UPDATE_ORDER_STATUS",
+                "START",
+                "Updating order status to " + status
+        );
+
+        return orderRepository.findByOrderId(orderId)
+
+                .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
+
+                .flatMap(order -> {
+
+                    order.setStatus(status);
+                    order.setUpdatedAt(LocalDateTime.now());
+
+                    return orderRepository.save(order);
+                });
+    }
 }

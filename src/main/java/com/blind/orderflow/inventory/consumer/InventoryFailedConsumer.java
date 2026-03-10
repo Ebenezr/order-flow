@@ -17,7 +17,7 @@ public class InventoryFailedConsumer {
     private final ObjectMapper mapper;
 
 
-    @KafkaListener(topics = KafkaConfig.INVENTORY_FAILED_TOPIC)
+    @KafkaListener(topics = KafkaConfig.INVENTORY_FAILED_TOPIC,groupId = "inventory-group")
     public void handleInventoryFailed(BaseEvent<?> event) {
 
         InventoryFailedPayload payload =

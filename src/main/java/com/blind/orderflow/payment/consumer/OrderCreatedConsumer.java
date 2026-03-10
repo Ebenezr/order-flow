@@ -21,7 +21,7 @@ public class OrderCreatedConsumer {
 
     private final ObjectMapper mapper;
 
-    @KafkaListener(topics = KafkaConfig.ORDER_CREATED_TOPIC)
+    @KafkaListener(topics = KafkaConfig.ORDER_CREATED_TOPIC,groupId = "payment-group")
     public void handleOrderCreated(BaseEvent<?> event) {
 
         OrderCreatedPayload payload =
