@@ -7,6 +7,7 @@ import com.blind.orderflow.order.service.OrderService;
 import com.blind.orderflow.receipt.service.ReceiptService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.PaymentCompletedPayload;
+import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,15 @@ public class PaymentCompletedConsumer {
 
         PaymentCompletedPayload payload =
                 mapper.convertValue(event.getPayload(), PaymentCompletedPayload.class);
+        Logger.info(
+                payload.getOrderId(),
+                "ORDER",
+                "PAYMENT_COMPLETED_RECEIVED",
+                "INFO",
+                "Received payment completed event, confirming order and printing receipt"
+        );
+
+        orderService.confirmOrder(payload.getOrderId()).subscribe();
 
         orderService.getOrder(payload.getOrderId())
                 .zipWith(orderService.getOrderItems(payload.getOrderId()).collectList())

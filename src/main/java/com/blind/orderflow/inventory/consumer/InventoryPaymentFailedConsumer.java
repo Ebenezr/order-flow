@@ -1,24 +1,22 @@
-package com.blind.orderflow.order.consumer;
+package com.blind.orderflow.inventory.consumer;
+
 
 import com.blind.orderflow.config.KafkaConfig;
-import com.blind.orderflow.order.service.OrderService;
+import com.blind.orderflow.inventory.service.InventoryService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.PaymentFailedPayload;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
-public class PaymentFailedConsumer {
+public class InventoryPaymentFailedConsumer {
 
-    private final OrderService orderService;
+    private final InventoryService inventoryService;
     private final ObjectMapper mapper;
-
 
     @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC)
     public void handlePaymentFailed(BaseEvent<?> event) {
@@ -28,13 +26,13 @@ public class PaymentFailedConsumer {
 
         Logger.info(
                 payload.getOrderId(),
-                "ORDER",
+                "INVENTORY",
                 "PAYMENT_FAILED_RECEIVED",
                 "INFO",
-                "Received payment failed event, canceling order"
+                "Received payment failed event, releasing inventory reservation"
         );
 
-        orderService.cancelOrder(payload.getOrderId())
+        inventoryService.releaseReservation(payload.getOrderId())
                 .subscribe();
     }
 }

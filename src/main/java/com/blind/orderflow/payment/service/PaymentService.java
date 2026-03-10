@@ -1,10 +1,10 @@
 package com.blind.orderflow.payment.service;
 
 import com.blind.orderflow.config.KafkaConfig;
+import com.blind.orderflow.order.repository.OrderRepository;
 import com.blind.orderflow.payment.entity.PaymentTransaction;
 import com.blind.orderflow.payment.repository.PaymentRepository;
 import com.blind.orderflow.shared.events.BaseEvent;
-import com.blind.orderflow.shared.events.OrderCreatedPayload;
 import com.blind.orderflow.shared.events.PaymentCompletedPayload;
 import com.blind.orderflow.shared.events.PaymentFailedPayload;
 import com.blind.orderflow.shared.kafka.KafkaProducerService;
@@ -24,15 +24,14 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final OrderRepository orderRepository;
 
-    public Mono<Void> processPayment(OrderCreatedPayload payload) {
-
-        String orderId = payload.getOrderId();
+    public Mono<Void> processPayment(String orderId) {
 
         return paymentRepository
                 .findByOrderId(orderId)
 
-                // If payment already exists → skip
+                //  skip dups
                 .flatMap(existing -> {
                     Logger.info(
                             orderId,
@@ -45,36 +44,37 @@ public class PaymentService {
                 })
 
                 // If no payment exists → process normally
-                .switchIfEmpty(processNewPayment(payload))
+                .switchIfEmpty(processNewPayment(orderId))
 
                 .then();
     }
 
 
-    private Mono<Void> processNewPayment(OrderCreatedPayload payload) {
+    private Mono<Void> processNewPayment(String orderId) {
 
-        String orderId = payload.getOrderId();
         String transactionId = UUID.randomUUID().toString();
 
         Logger.info(orderId,"PAYMENT","PROCESS_PAYMENT","START","Processing payment");
 
-        PaymentTransaction tx =
-                PaymentTransaction.builder()
-                        .transactionId(transactionId)
-                        .orderId(orderId)
-                        .amount(payload.getTotalAmount())
-                        .status("PROCESSING")
-                        .createdAt(LocalDateTime.now())
-                        .build();
+        return orderRepository.findByOrderId(orderId)
+                .flatMap(order -> {
+                    PaymentTransaction tx =
+                            PaymentTransaction.builder()
+                                    .transactionId(transactionId)
+                                    .orderId(orderId)
+                                    .amount(order.getTotalAmount())
+                                    .status("PROCESSING")
+                                    .createdAt(LocalDateTime.now())
+                                    .build();
 
-        return paymentRepository.save(tx)
+                    return paymentRepository.save(tx);
+                })
 
                 .flatMap(saved -> {
 
                     boolean success = new Random().nextBoolean();
 
                     if (success) {
-
                         saved.setStatus("SUCCESS");
 
                         return paymentRepository.save(saved)
@@ -83,9 +83,7 @@ public class PaymentService {
                                         orderId,
                                         buildCompletedEvent(orderId, transactionId)
                                 ));
-
                     } else {
-
                         saved.setStatus("FAILED");
 
                         return paymentRepository.save(saved)
