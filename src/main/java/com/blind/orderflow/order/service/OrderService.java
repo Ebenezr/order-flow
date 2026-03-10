@@ -197,4 +197,28 @@ public class OrderService {
                 start
         );
     }
+
+    public Mono<Order> confirmOrder(String orderId) {
+
+        LocalDateTime start = LocalDateTime.now();
+
+        Mono<Order> pipeline =
+                orderRepository
+                        .findByOrderId(orderId)
+                        .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
+                        .flatMap(order -> {
+
+                            order.setStatus(OrderStatus.CONFIRMED);
+                            order.setUpdatedAt(LocalDateTime.now());
+
+                            return orderRepository.save(order);
+                        });
+
+        return Logger.logMono(
+                pipeline,
+                "ORDER",
+                "CONFIRM_ORDER",
+                start
+        );
+    }
 }
