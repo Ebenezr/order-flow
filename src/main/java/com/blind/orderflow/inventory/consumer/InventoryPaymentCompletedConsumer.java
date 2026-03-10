@@ -17,7 +17,7 @@ public class InventoryPaymentCompletedConsumer {
     private final InventoryService inventoryService;
     private final ObjectMapper mapper;
 
-    @KafkaListener(topics = KafkaConfig.PAYMENT_COMPLETED_TOPIC)
+    @KafkaListener(topics = KafkaConfig.PAYMENT_COMPLETED_TOPIC,groupId = "inventory-group")
     public void handlePaymentCompleted(BaseEvent<?> event) {
 
         PaymentCompletedPayload payload =

@@ -20,7 +20,7 @@ public class PaymentFailedConsumer {
     private final ObjectMapper mapper;
 
 
-    @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC)
+    @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC,groupId = "order-group")
     public void handlePaymentFailed(BaseEvent<?> event) {
 
         PaymentFailedPayload payload =

@@ -18,7 +18,7 @@ public class InventoryPaymentFailedConsumer {
     private final InventoryService inventoryService;
     private final ObjectMapper mapper;
 
-    @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC)
+    @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC,groupId = "inventory-group")
     public void handlePaymentFailed(BaseEvent<?> event) {
 
         PaymentFailedPayload payload =
