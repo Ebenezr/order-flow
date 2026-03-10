@@ -27,6 +27,13 @@ public class PaymentService {
     private final OrderRepository orderRepository;
 
     public Mono<Void> processPayment(String orderId) {
+        Logger.info(
+                orderId,
+                "PAYMENT",
+                "ENTRY_PROCESS_PAYMENT",
+                "START",
+                "Processing payment for order"
+        );
 
         return paymentRepository
                 .findByOrderId(orderId)

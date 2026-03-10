@@ -44,13 +44,6 @@ public class InventoryService {
                                 )
                                 .flatMap(rows -> {
                                     if (rows == 0) {
-                                        Logger.error(
-                                                orderId,
-                                                "INVENTORY",
-                                                "RESERVATION_FAILED",
-                                                "ERROR",
-                                                "Out of stock for product " + item.getProductId()
-                                        );
                                         return Mono.error(
                                                 new RuntimeException("Out of stock for " + item.getProductId())
                                         );
@@ -65,38 +58,41 @@ public class InventoryService {
                                                     .createdAt(LocalDateTime.now())
                                                     .expiresAt(LocalDateTime.now().plusMinutes(5))
                                                     .build();
-
-                                    BaseEvent<InventoryReservedPayload> event =
-                                            BaseEvent.<InventoryReservedPayload>builder()
-                                                    .eventId(UUID.randomUUID())
-                                                    .eventType("InventoryReserved")
-                                                    .version(1)
-                                                    .occurredAt(Instant.now())
-                                                    .payload(
-                                                            InventoryReservedPayload.builder()
-                                                                    .orderId(orderId)
-                                                                    .build()
-                                                    )
-                                                    .build();
-
-                                    return reservationRepository.save(reservation)
-                                            .then(kafkaProducerService.send(
-                                                    KafkaConfig.INVENTORY_RESERVED_TOPIC,
-                                                    orderId,
-                                                    event
-                                            ));
+                                    return reservationRepository.save(reservation);
                                 })
                 )
-                .doOnNext(rows -> Logger.info(
-                        orderId,
-                        "INVENTORY",
-                        "RESERVE_RESULT",
-                        "INFO",
-                        "Rows affected=" + rows
-                )).then();
+                .then(Mono.defer(() -> {
+
+                    BaseEvent<InventoryReservedPayload> event =
+                            BaseEvent.<InventoryReservedPayload>builder()
+                                    .eventId(UUID.randomUUID())
+                                    .eventType("InventoryReserved")
+                                    .version(1)
+                                    .occurredAt(Instant.now())
+                                    .payload(
+                                            InventoryReservedPayload.builder()
+                                                    .orderId(orderId)
+                                                    .build()
+                                    )
+                                    .build();
+
+                    return kafkaProducerService.send(
+                            KafkaConfig.INVENTORY_RESERVED_TOPIC,
+                            orderId,
+                            event
+                    );
+                }));
     }
 
     public Mono<Void> confirmReservation(String orderId) {
+
+        Logger.info(
+                orderId,
+                "INVENTORY",
+                "CONFIRM_RESERVATION",
+                "START",
+                "Confirming inventory reservation for order"
+        );
 
         // convert RESERVED → CONFIRMED
         return reservationRepository.findByOrderId(orderId)
@@ -111,6 +107,13 @@ public class InventoryService {
     }
 
     public Mono<Void> releaseReservation(String orderId) {
+        Logger.info(
+                orderId,
+                "INVENTORY",
+                "RELEASE_RESERVATION",
+                "START",
+                "Releasing inventory reservation for order"
+        );
 
         return reservationRepository.findByOrderId(orderId)
 

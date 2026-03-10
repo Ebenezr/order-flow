@@ -27,15 +27,24 @@ public class OrderCreatedConsumer {
         OrderCreatedPayload payload =
                 mapper.convertValue(event.getPayload(), OrderCreatedPayload.class);
 
-        Logger.info(
-                payload.getOrderId(),
-                "PAYMENT",
-                "ORDER_CREATED_RECEIVED",
-                "INFO",
-                "Received order created event, reserving stock"
-        );
-
         inventoryService.reserveStock(payload.getOrderId())
+                .doOnSuccess(
+                        v -> Logger.info(
+                                payload.getOrderId(),
+                                "PAYMENT",
+                                "STOCK_RESERVED",
+                                "INFO",
+                                "Stock reserved successfully, proceeding to payment"
+                        )
+                ).doOnError(
+                        e -> Logger.error(
+                                payload.getOrderId(),
+                                "PAYMENT",
+                                "STOCK_RESERVATION_FAILED",
+                                "ERROR",
+                                "Stock reservation failed: " + e.getMessage()
+                        )
+                )
                 .subscribe();
     }
 
@@ -45,15 +54,22 @@ public class OrderCreatedConsumer {
         InventoryReservedPayload payload =
                 mapper.convertValue(event.getPayload(), InventoryReservedPayload.class);
 
-        Logger.info(
-                payload.getOrderId(),
-                "PAYMENT",
-                "INVENTORY_RESERVED_RECEIVED",
-                "INFO",
-                "Received inventory reserved event, processing payment"
-        );
 
         paymentService.processPayment(payload.getOrderId())
+                .doOnError(e -> Logger.error(
+                        payload.getOrderId(),
+                        "PAYMENT",
+                        "PAYMENT_PROCESSING_FAILED",
+                        "ERROR",
+                        "Payment processing failed: " + e.getMessage()
+                ))
+                .doOnSuccess(e -> Logger.info(
+                        payload.getOrderId(),
+                        "PAYMENT",
+                        "PAYMENT_PROCESSED",
+                        "INFO",
+                        "Payment processed successfully"
+                ))
                 .subscribe();
     }
 
