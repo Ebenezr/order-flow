@@ -13,6 +13,7 @@ public class KafkaConfig {
     public static final String PAYMENT_FAILED_TOPIC = "payment.failed";
     public static final String INVENTORY_RESERVED_TOPIC = "inventory.reserved";
     public static final String ORDER_READY_TOPIC = "kitchen.order-ready";
+    public static final String INVENTORY_FAILED_TOPIC = "inventory.failed";
 
     @Bean
     public NewTopic orderCreatedTopic() {
@@ -49,6 +50,14 @@ public class KafkaConfig {
     @Bean
     public NewTopic orderReadyTopic() {
         return TopicBuilder.name(ORDER_READY_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic inventoryFailedTopic() {
+        return TopicBuilder.name(INVENTORY_FAILED_TOPIC)
                 .partitions(3)
                 .replicas(1)
                 .build();
