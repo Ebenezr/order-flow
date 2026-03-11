@@ -1,6 +1,7 @@
 package com.blind.orderflow.order.repository;
 
 import com.blind.orderflow.order.entity.Order;
+import com.blind.orderflow.shared.utils.enums.OrderStatus;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
@@ -24,4 +25,9 @@ public interface OrderRepository extends ReactiveCrudRepository<Order, Long> {
 
     @Query("SELECT o.order_id FROM orders o WHERE o.status IN ('CONFIRMED','IN_KITCHEN','READY','COMPLETED') AND o.created_at BETWEEN :from AND :to")
     Flux<String> findCompletedOrderIdsBetween(LocalDateTime from, LocalDateTime to);
+
+    @Query("SELECT COUNT(*) FROM orders WHERE status = 'CANCELLED' AND created_at BETWEEN :from AND :to")
+    Mono<Long> countCancelledOrdersBetween(LocalDateTime from, LocalDateTime to);
+
+    Flux<Order> findByStatusAndCreatedAtBetween(OrderStatus status, LocalDateTime from, LocalDateTime to);
 }

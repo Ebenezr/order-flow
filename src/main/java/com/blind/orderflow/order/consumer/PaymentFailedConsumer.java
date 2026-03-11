@@ -26,7 +26,7 @@ public class PaymentFailedConsumer {
         PaymentFailedPayload payload =
                 mapper.convertValue(event.getPayload(), PaymentFailedPayload.class);
 
-        orderService.cancelOrder(payload.getOrderId())
+        orderService.cancelOrder(payload.getOrderId(), "payment_failed")
                 .doOnError(e -> Logger.error(
                         payload.getOrderId(),
                         "ORDER",

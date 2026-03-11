@@ -23,6 +23,6 @@ public class InventoryFailedConsumer {
         InventoryFailedPayload payload =
                 mapper.convertValue(event.getPayload(), InventoryFailedPayload.class);
 
-        orderService.cancelOrder(payload.getOrderId()).subscribe();
+        orderService.cancelOrder(payload.getOrderId(), "inventory_unavailable").subscribe();
     }
 }

@@ -24,6 +24,8 @@ public class OrderItem {
 
     private Double price;
 
+    private String category;
+
     // snapshot JSON
     private String productSnapshot;
 }
