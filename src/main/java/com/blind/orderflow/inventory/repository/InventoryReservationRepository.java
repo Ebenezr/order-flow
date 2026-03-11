@@ -5,6 +5,8 @@ import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
 
+import java.time.LocalDateTime;
+
 public interface InventoryReservationRepository
         extends ReactiveCrudRepository<InventoryReservation, Long> {
 
@@ -17,4 +19,6 @@ public interface InventoryReservationRepository
     Flux<InventoryReservation> findExpiredReservations();
 
     Flux<InventoryReservation> findByOrderId(String orderId);
+
+    Flux<InventoryReservation> findByStatusAndCreatedAtBetween(String status, LocalDateTime from, LocalDateTime to);
 }

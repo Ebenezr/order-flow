@@ -21,6 +21,7 @@ public class Inventory {
 
     private String productId;
     private String productName;
+    private String category;
     private Integer availableQuantity;
     private LocalDateTime updatedAt;
 }

@@ -43,6 +43,9 @@ public class Order {
 
     @Column("total_amount")
     private Double totalAmount;
+
+    @Column("cancellation_reason")
+    private String cancellationReason;
 }
 
 

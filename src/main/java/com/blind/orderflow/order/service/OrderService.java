@@ -134,6 +134,10 @@ public class OrderService {
     }
 
     public Mono<Order> cancelOrder(String orderId) {
+        return cancelOrder(orderId, "manual");
+    }
+
+    public Mono<Order> cancelOrder(String orderId, String reason) {
 
         LocalDateTime start = LocalDateTime.now();
 
@@ -152,6 +156,7 @@ public class OrderService {
                         .flatMap(order -> {
                             OrderStateMachine.validate(order.getStatus(), OrderStatus.CANCELLED);
                             order.setStatus(OrderStatus.CANCELLED);
+                            order.setCancellationReason(reason);
                             order.setUpdatedAt(LocalDateTime.now());
                             return orderRepository.save(order);
                         });

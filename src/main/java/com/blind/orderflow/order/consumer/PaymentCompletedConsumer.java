@@ -31,10 +31,9 @@ public class PaymentCompletedConsumer {
         PaymentCompletedPayload payload =
                 mapper.convertValue(event.getPayload(), PaymentCompletedPayload.class);
 
-        orderService.confirmOrder(payload.getOrderId()).subscribe();
-
-        orderService.getOrder(payload.getOrderId())
-                .zipWith(orderService.getOrderItems(payload.getOrderId()).collectList())
+        orderService.confirmOrder(payload.getOrderId())
+                .then(orderService.getOrder(payload.getOrderId())
+                        .zipWith(orderService.getOrderItems(payload.getOrderId()).collectList()))
                 .flatMap(tuple -> {
 
                     Order order = tuple.getT1();

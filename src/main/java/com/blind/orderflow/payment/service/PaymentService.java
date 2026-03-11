@@ -83,6 +83,7 @@ public class PaymentService {
 
                     if (success) {
                         saved.setStatus("SUCCESS");
+                        saved.setUpdatedAt(LocalDateTime.now());
 
                         return paymentRepository.save(saved)
                                 .then(kafkaProducerService.send(
@@ -92,6 +93,7 @@ public class PaymentService {
                                 ));
                     } else {
                         saved.setStatus("FAILED");
+                        saved.setUpdatedAt(LocalDateTime.now());
 
                         return paymentRepository.save(saved)
                                 .then(kafkaProducerService.send(
