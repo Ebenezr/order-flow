@@ -16,6 +16,7 @@ public class ReservationCleanupService {
     private final InventoryReservationRepository reservationRepository;
     private final InventoryRepository inventoryRepository;
 
+
     @Scheduled(fixedRate = 60000) // every 1 minute
     public void cleanupExpiredReservations() {
 
@@ -47,4 +48,7 @@ public class ReservationCleanupService {
                     ))
             .subscribe();
     }
+
+
+
 }

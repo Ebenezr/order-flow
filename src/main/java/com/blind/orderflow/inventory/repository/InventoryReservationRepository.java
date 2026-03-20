@@ -18,6 +18,7 @@ public interface InventoryReservationRepository
 
     Flux<InventoryReservation> findExpiredReservations();
 
+
     Flux<InventoryReservation> findByOrderId(String orderId);
 
     Flux<InventoryReservation> findByStatusAndCreatedAtBetween(String status, LocalDateTime from, LocalDateTime to);
