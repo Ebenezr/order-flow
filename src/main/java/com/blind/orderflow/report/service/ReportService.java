@@ -3,6 +3,7 @@ package com.blind.orderflow.report.service;
 import com.blind.orderflow.inventory.repository.InventoryReservationRepository;
 import com.blind.orderflow.kitchen.entity.KitchenOrder;
 import com.blind.orderflow.kitchen.repository.KitchenOrderRepository;
+import com.blind.orderflow.order.entity.Order;
 import com.blind.orderflow.order.repository.OrderItemRepository;
 import com.blind.orderflow.order.repository.OrderRepository;
 import com.blind.orderflow.payment.repository.PaymentRepository;
@@ -16,6 +17,7 @@ import com.blind.orderflow.report.dto.ProcessingTimeReport;
 import com.blind.orderflow.report.dto.SlowItem;
 import com.blind.orderflow.report.dto.TopSellingItem;
 import com.blind.orderflow.shared.utils.enums.OrderStatus;
+import com.blind.orderflow.shared.utils.logging.Logger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -47,6 +49,7 @@ public class ReportService {
 
     public Mono<DailySalesReport> getDailySalesReport(LocalDate date) {
 
+        LocalDateTime start = LocalDateTime.now();
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
@@ -93,7 +96,7 @@ public class ReportService {
                             );
                 });
 
-        return Mono.zip(totalOrders, totalRevenue, vatCollected, topSellingItems)
+        Mono<DailySalesReport> pipeline =  Mono.zip(totalOrders, totalRevenue, vatCollected, topSellingItems)
                 .map(tuple -> DailySalesReport.builder()
                         .date(date)
                         .totalOrders(tuple.getT1())
@@ -102,14 +105,16 @@ public class ReportService {
                         .topSellingItems(tuple.getT4())
                         .build()
                 );
+        return Logger.logMono(pipeline, "REPORT", "GET_DAILY_SALES_REPORT", start);
     }
 
     public Mono<KitchenPerformanceReport> getKitchenPerformanceReport(LocalDate date) {
 
+        LocalDateTime start = LocalDateTime.now();
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-        return kitchenOrderRepository
+        Mono<KitchenPerformanceReport> pipeline =  kitchenOrderRepository
                 .findByStatusAndCreatedAtBetween("READY", startOfDay, endOfDay)
                 .collectList()
                 .flatMap(kitchenOrders -> {
@@ -186,10 +191,12 @@ public class ReportService {
                                         .build();
                             });
                 });
+        return Logger.logMono(pipeline, "REPORT", "GET_KITCHEN_PERFOMANCE_REPORT", start);
     }
 
     public Mono<PaymentReport> getPaymentReport(LocalDate date) {
 
+        LocalDateTime start = LocalDateTime.now();
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
@@ -198,7 +205,7 @@ public class ReportService {
         Mono<Long> failed = paymentRepository.countFailedBetween(startOfDay, endOfDay)
                 .defaultIfEmpty(0L);
 
-        return Mono.zip(successful, failed)
+        Mono<PaymentReport> pipeline =  Mono.zip(successful, failed)
                 .map(tuple -> {
                     long s = tuple.getT1();
                     long f = tuple.getT2();
@@ -212,14 +219,16 @@ public class ReportService {
                             .failureRate(failureRate)
                             .build();
                 });
+        return Logger.logMono(pipeline, "REPORT", "GET_PAYMENT_REPORT", start);
     }
 
     public Mono<CancellationReport> getCancellationReport(LocalDate date) {
 
+        LocalDateTime start = LocalDateTime.now();
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-        return orderRepository
+        Mono<CancellationReport> pipeline =  orderRepository
                 .findByStatusAndCreatedAtBetween(OrderStatus.CANCELLED, startOfDay, endOfDay)
                 .collectList()
                 .map(cancelledOrders -> {
@@ -245,10 +254,12 @@ public class ReportService {
                             .reasons(reasons)
                             .build();
                 });
+        return Logger.logMono(pipeline, "REPORT", "GET_CANCELLATION_REPORT", start);
     }
 
     public Mono<ProcessingTimeReport> getProcessingTimeReport(LocalDate date) {
 
+        LocalDateTime start = LocalDateTime.now();
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
@@ -321,7 +332,7 @@ public class ReportService {
                     return round(avg);
                 });
 
-        return Mono.zip(avgInventoryMs, avgPaymentMs, avgKitchenMin)
+        Mono<ProcessingTimeReport> pipeline =  Mono.zip(avgInventoryMs, avgPaymentMs, avgKitchenMin)
                 .map(tuple -> ProcessingTimeReport.builder()
                         .date(date)
                         .avgInventoryReserveTimeMs(tuple.getT1())
@@ -329,14 +340,16 @@ public class ReportService {
                         .avgKitchenPrepMinutes(tuple.getT3())
                         .build()
                 );
+        return Logger.logMono(pipeline, "REPORT", "GET_PROCESSING_TIME_REPORT", start);
     }
 
     public Mono<List<CategoryRevenue>> getRevenueByCategoryReport(LocalDate date) {
 
+        LocalDateTime start = LocalDateTime.now();
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-        return orderRepository
+        Mono<List<CategoryRevenue>> pipeline =  orderRepository
                 .findCompletedOrderIdsBetween(startOfDay, endOfDay)
                 .collectList()
                 .flatMap(orderIds -> {
@@ -359,10 +372,13 @@ public class ReportService {
                                     .toList()
                             );
                 });
+
+        return Logger.logMono(pipeline, "REPORT", "GET_REVENUE_BY_CATEGORY_REPORT", start);
     }
 
     public Mono<MonthlySummaryReport> getMonthlySummaryReport(YearMonth yearMonth) {
 
+        LocalDateTime start = LocalDateTime.now();
         LocalDateTime startOfMonth = yearMonth.atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = yearMonth.atEndOfMonth().atTime(LocalTime.MAX);
 
@@ -377,7 +393,7 @@ public class ReportService {
                 .defaultIfEmpty(0.0)
                 .map(this::round);
 
-        return Mono.zip(grossSales, vatCollected)
+        Mono<MonthlySummaryReport> pipeline =  Mono.zip(grossSales, vatCollected)
                 .map(tuple -> {
                     double gross = tuple.getT1();
                     double vat = tuple.getT2();
@@ -390,6 +406,8 @@ public class ReportService {
                             .vatCollected(vat)
                             .build();
                 });
+
+        return Logger.logMono(pipeline, "REPORT", "GET_MONTHLY_SUMMARY_REPORT", start);
     }
 
     private double round(double value) {

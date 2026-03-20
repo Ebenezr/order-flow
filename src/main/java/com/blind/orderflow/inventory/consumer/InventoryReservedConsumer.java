@@ -26,21 +26,25 @@ public class InventoryReservedConsumer {
 
 
         String orderId = payload.getOrderId();
-        paymentService.processPayment(orderId)
+        String correlationId = event.getCorrelationId();
+
+
+        paymentService.processPayment(orderId,correlationId)
                 .doOnError(e -> Logger.error(
-                        orderId,
+                        correlationId,
                         "PAYMENT",
                         "ERROR_PROCESS_PAYMENT",
                         "ERROR",
                         e.getMessage()
                 ))
                 .doOnSuccess(v -> Logger.info(
-                        orderId,
+                        correlationId,
                         "PAYMENT",
                         "PROCESS_PAYMENT_COMPLETED",
                         "INFO",
                         "Payment flow finished (check next events for result)"
                 ))
+                .contextWrite(ctx -> ctx.put("correlationId", correlationId))
                 .subscribe();
     }
 

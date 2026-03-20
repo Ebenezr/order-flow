@@ -12,6 +12,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -23,11 +24,11 @@ public class OrderController {
     @PostMapping
     public Mono<ApiResponse<Order>> createOrder(
             @RequestParam String customerId,
-            @RequestBody Flux<CreateOrderItemRequest> items
+            @RequestBody Flux<CreateOrderItemRequest> items,
+            @RequestHeader(value = "X-Correlation-Id", required = true) String correlationId
     ) {
-
         return orderService
-                .createOrder(customerId, items)
+                .createOrder(customerId, items,correlationId)
                 .flatMap(order ->
                         ResponseFactory.getRequestRefId()
                                 .flatMap(requestId ->
@@ -41,7 +42,10 @@ public class OrderController {
 
         return orderService.completeOrder(orderId)
                 .flatMap(order ->
-                        ResponseFactory.success(order, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(order, requestId)
+                                )
                 );
     }
 
@@ -73,10 +77,10 @@ public class OrderController {
 
         @PostMapping("/{orderId}/cancel")
         public Mono<ApiResponse<Order>> cancelOrder(@PathVariable String orderId,
-        @RequestBody String reason
+        @RequestBody String reason, @RequestHeader(value = "X-Correlation-Id", required = true) String correlationId
         ) {
             return orderService
-                    .cancelOrder(orderId,reason)
+                    .cancelOrder(orderId,reason,correlationId)
                     .flatMap(order ->
                             ResponseFactory.getRequestRefId()
                                     .flatMap(requestId ->

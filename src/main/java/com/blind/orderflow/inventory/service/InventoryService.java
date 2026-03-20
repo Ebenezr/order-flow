@@ -30,7 +30,7 @@ public class InventoryService {
     private final OrderItemRepository orderItemRepository;
     private final MenuService menuService;
 
-    public Mono<Void> reserveStock(String orderId) {
+    public Mono<Void> reserveStock(String orderId,String correlationId) {
 
         LocalDateTime start = LocalDateTime.now();
 
@@ -52,7 +52,7 @@ public class InventoryService {
                                                                        int requiredQty =
                                                                                recipeItem.getQuantity() * item.getQuantity();
 
-                                                                       Logger.info(orderId, "INVENTORY", "CHECK_INGREDIENT", "INFO",
+                                                                       Logger.info(correlationId, "INVENTORY", "CHECK_INGREDIENT", "INFO",
                                                                                "Checking " + recipeItem.getIngredientId() + " qty=" + requiredQty);
 
                                                                        return inventoryRepository.reserveStock(
@@ -86,12 +86,13 @@ public class InventoryService {
                 )
                 .flatMap(success -> {
 
-                    Logger.info(orderId, "INVENTORY", "SUCCESS_RESERVE", "SUCCESS", "All items reserved");
+                    Logger.info(correlationId, "INVENTORY", "SUCCESS_RESERVE", "SUCCESS", "All items reserved");
 
 
                     BaseEvent<InventoryReservedPayload> event =
                             BaseEvent.<InventoryReservedPayload>builder()
                                     .eventId(UUID.randomUUID())
+                                    .correlationId(correlationId)
                                     .eventType("InventoryReserved")
                                     .version(1)
                                     .occurredAt(Instant.now())
@@ -110,15 +111,15 @@ public class InventoryService {
                 })
                 .onErrorResume(error -> {
 
-                    Logger.error(orderId, "INVENTORY", "RESERVE_FAILED", "ERROR", error.getMessage());
+                    Logger.error(correlationId, "INVENTORY", "RESERVE_FAILED", "ERROR", error.getMessage());
 
                     return rollbackReservations(orderId)
-                            .then(publishInventoryFailed(orderId, error.getMessage()));
+                            .then(publishInventoryFailed(orderId, error.getMessage(),correlationId));
                 });
         return Logger.logMono(pipeline, "INVENTORY", "RESERVE_STOCK", start);
     }
 
-    public Mono<Void> confirmReservation(String orderId) {
+    public Mono<Void> confirmReservation(String orderId, String correlationId) {
         LocalDateTime start = LocalDateTime.now();
 
         // convert RESERVED → CONFIRMED
@@ -131,7 +132,7 @@ public class InventoryService {
                     return reservationRepository.save(res);
                 })
                 .doOnError(error ->
-                        Logger.error(orderId, "INVENTORY", "CONFIRM", "ERROR", error.getMessage())
+                        Logger.error(correlationId, "INVENTORY", "CONFIRM", "ERROR", error.getMessage())
                 )
                 .then();
 
@@ -158,7 +159,7 @@ public class InventoryService {
         return Logger.logMono(pipeline, "INVENTORY", "RELEASE_STOCK", start);
     }
 
-    private Mono<Void> publishInventoryFailed(String orderId, String reason) {
+    private Mono<Void> publishInventoryFailed(String orderId, String reason,String correlationId) {
 
         LocalDateTime start = LocalDateTime.now();
 
@@ -166,6 +167,7 @@ public class InventoryService {
         BaseEvent<InventoryFailedPayload> event =
                 BaseEvent.<InventoryFailedPayload>builder()
                         .eventId(UUID.randomUUID())
+                        .correlationId(correlationId)
                         .eventType("InventoryFailed")
                         .version(1)
                         .occurredAt(Instant.now())

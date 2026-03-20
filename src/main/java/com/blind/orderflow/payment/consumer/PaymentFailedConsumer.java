@@ -27,17 +27,19 @@ public class PaymentFailedConsumer {
                 mapper.convertValue(event.getPayload(), PaymentFailedPayload.class);
 
         String orderId = payload.getOrderId();
+        String correlationId = event.getCorrelationId();
 
         inventoryService.releaseReservation(orderId)
-                .then(orderService.cancelOrder(orderId, payload.getReason()))
+                .then(orderService.cancelOrder(orderId, payload.getReason(),correlationId))
                 .doOnSuccess(v ->
-                        Logger.info(orderId, "PAYMENT", "EVENT_FAILURE_FLOW_COMPLETE", "SUCCESS",
+                        Logger.info(correlationId, "PAYMENT", "EVENT_FAILURE_FLOW_COMPLETE", "SUCCESS",
                                 "Inventory released and order cancelled")
                 )
                 .doOnError(e ->
-                        Logger.error(orderId, "PAYMENT", "EVENT_FAILURE_FLOW_ERROR", "ERROR",
+                        Logger.error(correlationId, "PAYMENT", "EVENT_FAILURE_FLOW_ERROR", "ERROR",
                                 e.getMessage())
                 )
+                .contextWrite(ctx -> ctx.put("correlationId", correlationId))
                 .subscribe();
     }
 }

@@ -19,7 +19,10 @@ public class KitchenController {
         return kitchenService.getPendingOrders()
                 .collectList()
                 .flatMap(orders ->
-                        ResponseFactory.success(orders, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(orders, requestId)
+                                )
                 );
     }
 
@@ -28,7 +31,10 @@ public class KitchenController {
         return kitchenService.getOrdersByStatus(status)
                 .collectList()
                 .flatMap(orders ->
-                        ResponseFactory.success(orders, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(orders, requestId)
+                                )
                 );
     }
 
@@ -37,7 +43,10 @@ public class KitchenController {
 
         return kitchenService.startPreparing(orderId)
                 .flatMap(order ->
-                        ResponseFactory.success(order, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(order, requestId))
+
                 );
     }
 
@@ -46,7 +55,9 @@ public class KitchenController {
 
         return kitchenService.markReady(orderId)
                 .flatMap(order ->
-                        ResponseFactory.success(order, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(order, requestId))
                 );
     }
 }

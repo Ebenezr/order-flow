@@ -13,6 +13,8 @@ public class BaseEvent<T> {
 
     private UUID eventId;
 
+    private String correlationId;
+
     private String eventType;
 
     private int version;

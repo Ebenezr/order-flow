@@ -11,6 +11,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
@@ -33,6 +36,21 @@ public class GlobalExceptionHandler {
                 org.springframework.http.HttpStatus.FORBIDDEN
         );
     }
+
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Mono<ResponseEntity<?>> handleBadRequest(IllegalArgumentException ex) {
+
+        return Mono.just(
+                ResponseEntity.badRequest().body(
+                        Map.of(
+                                "error", "BAD_REQUEST",
+                                "message", ex.getMessage()
+                        )
+                )
+            );
+        }
+
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {

@@ -37,7 +37,7 @@ public class OrderService {
     private final KafkaProducerService kafkaProducerService;
     private final MenuService menuService;
 
-    public Mono<Order> createOrder(String customerId, Flux<CreateOrderItemRequest> items) {
+    public Mono<Order> createOrder(String customerId, Flux<CreateOrderItemRequest> items, String correlationId) {
 
         LocalDateTime start = LocalDateTime.now();
         String orderId = UUID.randomUUID().toString();
@@ -135,6 +135,7 @@ public class OrderService {
                             BaseEvent<OrderCreatedPayload> event =
                                     BaseEvent.<OrderCreatedPayload>builder()
                                             .eventId(UUID.randomUUID())
+                                            .correlationId(correlationId)
                                             .eventType("OrderCreated")
                                             .version(1)
                                             .occurredAt(Instant.now())
@@ -181,7 +182,7 @@ public class OrderService {
         );
     }
 
-    public Mono<Order> cancelOrder(String orderId, String reason) {
+    public Mono<Order> cancelOrder(String orderId, String reason, String correlationId) {
 
         LocalDateTime start = LocalDateTime.now();
 
@@ -192,7 +193,7 @@ public class OrderService {
                     //  already cancelled → just return (idempotent)
                     if (order.getStatus() == OrderStatus.CANCELLED) {
                         Logger.info(
-                                orderId,
+                                correlationId,
                                 "ORDER",
                                 "CANCEL_ORDER_SKIP",
                                 "INFO",

@@ -24,10 +24,13 @@ public class OrderCreatedConsumer {
         OrderCreatedPayload payload =
                 mapper.convertValue(event.getPayload(), OrderCreatedPayload.class);
 
-        inventoryService.reserveStock(payload.getOrderId())
+        String correlationId = event.getCorrelationId();
+        String orderId = payload.getOrderId();
+
+        inventoryService.reserveStock(orderId,correlationId)
                 .doOnSuccess(
                         v -> Logger.info(
-                                payload.getOrderId(),
+                                correlationId,
                                 "INVENTORY",
                                 "EVENT_SUCCESS_RESERVE_STOCK_CALLED",
                                 "INFO",
@@ -35,13 +38,14 @@ public class OrderCreatedConsumer {
                         )
                 ).doOnError(
                         e -> Logger.error(
-                                payload.getOrderId(),
+                                correlationId,
                                 "INVENTORY",
                                 "EVENT_ERROR_RESERVE_STOCK_CALL_FAILED",
                                 "ERROR",
                                 "Stock reservation failed: " + e.getMessage()
                         )
                 )
+                .contextWrite(ctx -> ctx.put("correlationId", correlationId))
                 .subscribe();
     }
 }
