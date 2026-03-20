@@ -21,7 +21,7 @@ public class InventoryReservation {
 
     private String reservationId;
     private String orderId;
-    private String productId;
+    private String ingredientId;
     private Integer quantity;
     private String status;
 
