@@ -11,11 +11,21 @@ public interface InventoryRepository extends ReactiveCrudRepository<Inventory, L
     @Modifying
     @Query("""
         UPDATE inventory
-        SET available_quantity = available_quantity - :qty
+        SET available_quantity = available_quantity - :quantity
         WHERE ingredient_id = :ingredientId
-        AND available_quantity >= :qty
+        AND available_quantity >= :quantity
     """)
     Mono<Integer> reserveStock(String ingredientId, Integer qty);
+
+    @Modifying
+    @Query("""
+    UPDATE inventory
+    SET available_quantity = available_quantity + :quantity,
+        updated_at = NOW()
+    WHERE ingredient_id = :ingredientId
+""")
+    Mono<Integer> releaseStock(String ingredientId, int quantity);
+
 
     Mono<Inventory> findByIngredientId(String ingredientId);
 }

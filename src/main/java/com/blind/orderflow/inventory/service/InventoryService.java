@@ -12,6 +12,7 @@ import com.blind.orderflow.shared.kafka.KafkaProducerService;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -38,29 +39,46 @@ public class InventoryService {
         );
 
         return orderItemRepository.findByOrderId(orderId)
-                .flatMap(item ->
-                        inventoryRepository.reserveStock(
-                                        item.getProductId(),
-                                        item.getQuantity()
-                                )
-                                .flatMap(rows -> {
-                                    if (rows == 0) {
-                                        return publishInventoryFailed(orderId, item.getProductId());
-                                    }
-                                    InventoryReservation reservation =
-                                            InventoryReservation.builder()
-                                                    .reservationId(UUID.randomUUID().toString())
-                                                    .orderId(orderId)
-                                                    .ingredientId(item.getProductId())
-                                                    .quantity(item.getQuantity())
-                                                    .status("RESERVED")
-                                                    .createdAt(LocalDateTime.now())
-                                                    .expiresAt(LocalDateTime.now().plusMinutes(5))
-                                                    .build();
-                                    return reservationRepository.save(reservation);
-                                })
+                .collectList()
+                .flatMap(items -> {
+                            if (items.isEmpty()) {
+                                return Mono.error(new RuntimeException("No items in order"));
+                            }
+                           return Flux.fromIterable(items)
+                                    .concatMap(item ->
+
+                                            inventoryRepository.reserveStock(
+                                                            item.getProductId(),
+                                                            item.getQuantity()
+                                                    )
+                                                    .flatMap(rows -> {
+                                                        if (rows == 0) {
+                                                            return Mono.error(new RuntimeException(
+                                                                    "Out of stock: " + item.getProductId()
+                                                            ));
+                                                        }
+
+                                                        InventoryReservation reservation =
+                                                                InventoryReservation.builder()
+                                                                        .reservationId(UUID.randomUUID().toString())
+                                                                        .orderId(orderId)
+                                                                        .ingredientId(item.getProductId())
+                                                                        .quantity(item.getQuantity())
+                                                                        .status("RESERVED")
+                                                                        .createdAt(LocalDateTime.now())
+                                                                        .expiresAt(LocalDateTime.now().plusMinutes(5))
+                                                                        .build();
+
+                                                        return reservationRepository.save(reservation);
+                                                    })
+                                    )
+                                    .then();
+                        }
                 )
                 .then(Mono.defer(() -> {
+
+                    Logger.info(orderId, "INVENTORY", "SUCCESS_RESERVE", "SUCCESS", "All items reserved");
+
 
                     BaseEvent<InventoryReservedPayload> event =
                             BaseEvent.<InventoryReservedPayload>builder()
@@ -80,7 +98,14 @@ public class InventoryService {
                             orderId,
                             event
                     );
-                }));
+                }))
+                .onErrorResume(error -> {
+
+                    Logger.error(orderId, "INVENTORY", "RESERVE_FAILED", "ERROR", error.getMessage());
+
+                    return rollbackReservations(orderId)
+                            .then(publishInventoryFailed(orderId, error.getMessage()));
+                });
     }
 
     public Mono<Void> confirmReservation(String orderId) {
@@ -118,26 +143,21 @@ public class InventoryService {
         );
 
         return reservationRepository.findByOrderId(orderId)
-
                 .flatMap(res ->
 
-                        inventoryRepository.findByIngredientId(res.getIngredientId())
-
-                                .flatMap(inv -> {
-
-                                    inv.setAvailableQuantity(
-                                            inv.getAvailableQuantity() + res.getQuantity()
-                                    );
-
-                                    return inventoryRepository.save(inv);
-                                })
-
-                                .then(reservationRepository.delete(res))
+                        inventoryRepository.releaseStock(
+                                        res.getIngredientId(),
+                                        res.getQuantity()
+                                )
+                                .then(
+                                        Mono.fromRunnable(() -> res.setStatus("RELEASED"))
+                                )
+                                .then(reservationRepository.save(res))
                 )
                 .then();
     }
 
-    private Mono<Void> publishInventoryFailed(String orderId, String productId) {
+    private Mono<Void> publishInventoryFailed(String orderId, String reason) {
 
         Logger.info(
                 orderId,
@@ -156,7 +176,7 @@ public class InventoryService {
                         .payload(
                                 InventoryFailedPayload.builder()
                                         .orderId(orderId)
-                                        .reason("Out of stock for " + productId)
+                                        .reason(reason)
                                         .build()
                         )
                         .build();
@@ -166,6 +186,18 @@ public class InventoryService {
                 orderId,
                 event
         );
+    }
+
+
+    private Mono<Void> rollbackReservations(String orderId) {
+
+        return reservationRepository.findByOrderId(orderId)
+                .flatMap(res ->
+                        inventoryRepository.releaseStock(
+                                        res.getIngredientId(),
+                                        res.getQuantity()
+                                ).then(reservationRepository.delete(res)))
+                .then();
     }
 
 }

@@ -23,7 +23,7 @@ public class KitchenService {
 
     public Mono<KitchenOrder> createKitchenOrder(String orderId) {
 
-        Logger.info(orderId,"KITCHEN","CREATE_KITCHEN_ORDER","START","Creating kitchen order");
+        Logger.info(orderId,"KITCHEN","ENTRY_CREATE_KITCHEN_ORDER","START","Creating kitchen order");
 
         KitchenOrder order =
                 KitchenOrder.builder()
@@ -34,7 +34,11 @@ public class KitchenService {
                         .updatedAt(LocalDateTime.now())
                         .build();
 
-        return kitchenRepository.save(order);
+        return kitchenRepository.findFirstByOrderId(orderId)
+                .flatMap(existing -> Mono.just(existing)) // skip
+                .switchIfEmpty(
+                        kitchenRepository.save(order)
+                );
     }
 
     public Flux<KitchenOrder> getPendingOrders() {

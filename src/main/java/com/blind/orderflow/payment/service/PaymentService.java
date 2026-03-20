@@ -8,6 +8,7 @@ import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.PaymentCompletedPayload;
 import com.blind.orderflow.shared.events.PaymentFailedPayload;
 import com.blind.orderflow.shared.kafka.KafkaProducerService;
+import com.blind.orderflow.shared.utils.enums.OrderStatus;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -47,13 +48,20 @@ public class PaymentService {
                             "INFO",
                             "Payment already processed"
                     );
-                    return Mono.empty();
+                    return Mono.<Void>empty();
                 })
+                .switchIfEmpty(
+                        orderRepository.findByOrderId(orderId)
+                                .flatMap(order -> {
 
-                // If no payment exists → process normally
-                .switchIfEmpty(processNewPayment(orderId))
+                                    if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+                                        Logger.info(orderId, "PAYMENT", "SKIP_INVALID_STATE", "INFO", "Invalid state");
+                                        return Mono.empty();
+                                    }
 
-                .then();
+                                    return processNewPayment(orderId);
+                                })
+                );
     }
 
 
@@ -65,6 +73,18 @@ public class PaymentService {
 
         return orderRepository.findByOrderId(orderId)
                 .flatMap(order -> {
+
+                    if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+                        Logger.info(
+                                orderId,
+                                "PAYMENT",
+                                "SKIP_INVALID_STATE",
+                                "INFO",
+                                "Order not in PENDING_PAYMENT"
+                        );
+                        return Mono.empty();
+                    }
+
                     PaymentTransaction tx =
                             PaymentTransaction.builder()
                                     .transactionId(transactionId)

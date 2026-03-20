@@ -18,34 +18,35 @@ public class InventoryFailedConsumer {
     private final ObjectMapper mapper;
 
 
-    @KafkaListener(topics = KafkaConfig.INVENTORY_FAILED_TOPIC,groupId = "inventory-group")
+    @KafkaListener(topics = KafkaConfig.INVENTORY_FAILED_TOPIC)
     public void handleInventoryFailed(BaseEvent<?> event) {
 
         InventoryFailedPayload payload =
                 mapper.convertValue(event.getPayload(), InventoryFailedPayload.class);
 
-        orderService.cancelOrder(payload.getOrderId(), "inventory_unavailable")
+        String orderId = payload.getOrderId();
+
+        orderService.cancelOrder(orderId, payload.getReason())
                 .doOnError(
-                        throwable -> {
-                            Logger.error(
-                                    payload.getOrderId(),
-                                    "INVENTORY",
-                                    "ERROR_CANCEL_ORDER",
-                                    "SUCCESS",
-                                    throwable.getMessage()
-                            );
-                        }
-                )
-                .doOnSuccess(
-                        order -> {
+                        throwable ->
                             Logger.info(
-                                    payload.getOrderId(),
-                                    "INVENTORY",
-                                    "ORDER_CANCELLED_DUE_TO_INVENTORY_FAILURE",
+                                    orderId,
+                                    "ORDER",
+                                    "EVENT_ORDER_CANCELLED_INVENTORY_FAILED",
                                     "SUCCESS",
                                     "Order cancelled due to inventory failure"
-                            );
-                        }
+                            )
+                )
+                .doOnSuccess(
+                        order ->
+                                Logger.info(
+                                        orderId,
+                                        "ORDER",
+                                        "EVENT_ORDER_CANCELLED_INVENTORY_FAILED",
+                                        "SUCCESS",
+                                        "Order cancelled due to inventory failure"
+                                )
+
                 )
                 .subscribe();
     }

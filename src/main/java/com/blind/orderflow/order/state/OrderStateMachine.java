@@ -14,10 +14,10 @@ public class OrderStateMachine {
             Set.of(OrderStatus.PENDING_PAYMENT, OrderStatus.CANCELLED),
 
             OrderStatus.PENDING_PAYMENT,
-            Set.of(OrderStatus.CONFIRMED, OrderStatus.PAYMENT_FAILED, OrderStatus.CANCELLED),
+            Set.of(OrderStatus.CONFIRMED, OrderStatus.FAILED, OrderStatus.CANCELLED),
 
             OrderStatus.CONFIRMED,
-            Set.of(OrderStatus.IN_KITCHEN, OrderStatus.CANCELLED),
+            Set.of(OrderStatus.IN_KITCHEN),
 
             OrderStatus.IN_KITCHEN,
             Set.of(OrderStatus.READY),
