@@ -25,20 +25,21 @@ public class InventoryReservedConsumer {
                 mapper.convertValue(event.getPayload(), InventoryReservedPayload.class);
 
 
-        paymentService.processPayment(payload.getOrderId())
+        String orderId = payload.getOrderId();
+        paymentService.processPayment(orderId)
                 .doOnError(e -> Logger.error(
-                        payload.getOrderId(),
+                        orderId,
                         "PAYMENT",
-                        "EVENT_ERROR_PAYMENT_PROCESSING_FAILED",
+                        "ERROR_PROCESS_PAYMENT",
                         "ERROR",
-                        "Payment processing failed: " + e.getMessage()
+                        e.getMessage()
                 ))
-                .doOnSuccess(e -> Logger.info(
-                        payload.getOrderId(),
+                .doOnSuccess(v -> Logger.info(
+                        orderId,
                         "PAYMENT",
-                        "EVENT_SUCCESS_PAYMENT_PROCESSED",
+                        "PROCESS_PAYMENT_COMPLETED",
                         "INFO",
-                        "Payment processed successfully"
+                        "Payment flow finished (check next events for result)"
                 ))
                 .subscribe();
     }

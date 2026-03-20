@@ -181,25 +181,11 @@ public class OrderService {
         );
     }
 
-    public Mono<Order> cancelOrder(String orderId) {
-        return cancelOrder(orderId, "manual");
-    }
-
-
-
-
-
     public Mono<Order> cancelOrder(String orderId, String reason) {
 
-        Logger.info(
-                orderId,
-                "ORDER",
-                "CANCEL_ORDER",
-                "START",
-                "Cancelling order"
-        );
+        LocalDateTime start = LocalDateTime.now();
 
-        return orderRepository.findByOrderId(orderId)
+        Mono<Order> pipeline = orderRepository.findByOrderId(orderId)
                 .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
                 .flatMap(order -> {
 
@@ -224,6 +210,7 @@ public class OrderService {
 
                     return orderRepository.save(order);
                 });
+        return Logger.logMono(pipeline, "ORDER", "CANCEL_ORDER", start);
     }
 
     public Mono<Order> confirmOrder(String orderId) {
@@ -252,15 +239,9 @@ public class OrderService {
 
     public Mono<Order> updateOrderStatus(String orderId, OrderStatus status) {
 
-        Logger.info(
-                orderId,
-                "ORDER",
-                "UPDATE_ORDER_STATUS",
-                "START",
-                "Updating order status to " + status
-        );
+        LocalDateTime start = LocalDateTime.now();
 
-        return orderRepository.findByOrderId(orderId)
+        Mono<Order> pipeline = orderRepository.findByOrderId(orderId)
 
                 .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
 
@@ -271,5 +252,27 @@ public class OrderService {
 
                     return orderRepository.save(order);
                 });
+
+        return Logger.logMono(pipeline, "ORDER", "UPDATE_ORDER_STATUS", start);
+    }
+
+    public Mono<Order> completeOrder(String orderId) {
+
+        LocalDateTime start = LocalDateTime.now();
+
+        Mono<Order> pipeline =
+                orderRepository.findByOrderId(orderId)
+                        .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
+                        .flatMap(order -> {
+
+                            OrderStateMachine.validate(order.getStatus(), OrderStatus.COMPLETED);
+
+                            order.setStatus(OrderStatus.COMPLETED);
+                            order.setUpdatedAt(LocalDateTime.now());
+
+                            return orderRepository.save(order);
+                        });
+
+        return Logger.logMono(pipeline, "ORDER", "COMPLETE_ORDER", start);
     }
 }

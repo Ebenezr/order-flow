@@ -28,15 +28,10 @@ public class PaymentService {
     private final OrderRepository orderRepository;
 
     public Mono<Void> processPayment(String orderId) {
-        Logger.info(
-                orderId,
-                "PAYMENT",
-                "ENTRY_PROCESS_PAYMENT",
-                "START",
-                "Processing payment for order"
-        );
 
-        return paymentRepository
+        LocalDateTime start = LocalDateTime.now();
+
+        Mono<Void> pipeline=  paymentRepository
                 .findByOrderId(orderId)
 
                 //  skip dups
@@ -62,16 +57,17 @@ public class PaymentService {
                                     return processNewPayment(orderId);
                                 })
                 );
+
+        return Logger.logMono(pipeline, "PAYMENT", "PROCESS_PAYMENT", start);
     }
 
 
     private Mono<Void> processNewPayment(String orderId) {
 
+        LocalDateTime start = LocalDateTime.now();
         String transactionId = UUID.randomUUID().toString();
 
-        Logger.info(orderId,"PAYMENT","PROCESS_PAYMENT","START","Processing payment");
-
-        return orderRepository.findByOrderId(orderId)
+        Mono<Void> pipeline= orderRepository.findByOrderId(orderId)
                 .flatMap(order -> {
 
                     if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
@@ -96,14 +92,34 @@ public class PaymentService {
 
                     return paymentRepository.save(tx);
                 })
-
                 .flatMap(saved -> {
 
                     boolean success = new Random().nextBoolean();
 
+                    String decision = success ? "SUCCESS" : "FAILED";
+
+
+                    Logger.info(
+                            orderId,
+                            "PAYMENT",
+                            "PAYMENT_DECISION",
+                            "INFO",
+                            "Payment decision = " + decision
+                    );
+
+
+
                     if (success) {
                         saved.setStatus("SUCCESS");
                         saved.setUpdatedAt(LocalDateTime.now());
+
+                        Logger.info(
+                                orderId,
+                                "PAYMENT",
+                                "PAYMENT_SUCCESS",
+                                "INFO",
+                                "Payment approved, publishing PAYMENT_COMPLETED event"
+                        );
 
                         return paymentRepository.save(saved)
                                 .then(kafkaProducerService.send(
@@ -112,6 +128,15 @@ public class PaymentService {
                                         buildCompletedEvent(orderId, transactionId)
                                 ));
                     } else {
+
+                        Logger.info(
+                                orderId,
+                                "PAYMENT",
+                                "PAYMENT_SUCCESS",
+                                "INFO",
+                                "Payment approved, publishing PAYMENT_COMPLETED event"
+                        );
+
                         saved.setStatus("FAILED");
                         saved.setUpdatedAt(LocalDateTime.now());
 
@@ -122,7 +147,17 @@ public class PaymentService {
                                         buildFailedEvent(orderId)
                                 ));
                     }
-                });
+                })
+                .doOnSuccess(v ->
+                        Logger.info(orderId, "PAYMENT", "EVENT_PUBLISHED", "SUCCESS",
+                                "Payment event published to Kafka")
+                )
+                .doOnError(e ->
+                        Logger.error(orderId, "PAYMENT", "EVENT_PUBLISH_FAILED", "ERROR",
+                                e.getMessage())
+                );
+
+        return Logger.logMono(pipeline, "PAYMENT", "PROCESS_NEW_PAYMENT", start);
     }
 
     private BaseEvent<PaymentCompletedPayload> buildCompletedEvent(String orderId, String transactionId) {

@@ -23,7 +23,7 @@ public class KitchenService {
 
     public Mono<KitchenOrder> createKitchenOrder(String orderId) {
 
-        Logger.info(orderId,"KITCHEN","ENTRY_CREATE_KITCHEN_ORDER","START","Creating kitchen order");
+        LocalDateTime start = LocalDateTime.now();
 
         KitchenOrder order =
                 KitchenOrder.builder()
@@ -34,32 +34,32 @@ public class KitchenService {
                         .updatedAt(LocalDateTime.now())
                         .build();
 
-        return kitchenRepository.findFirstByOrderId(orderId)
+        Mono<KitchenOrder> pipeline= kitchenRepository.findFirstByOrderId(orderId)
                 .flatMap(existing -> Mono.just(existing)) // skip
                 .switchIfEmpty(
                         kitchenRepository.save(order)
                 );
+        return Logger.logMono(pipeline, "KITCHEN", "CREATE_KITCHEN_ORDER", start);
     }
 
     public Flux<KitchenOrder> getPendingOrders() {
-        return kitchenRepository.findByStatus("RECEIVED");
+        LocalDateTime start = LocalDateTime.now();
+        Flux<KitchenOrder> pipeline= kitchenRepository.findByStatus("RECEIVED");
+        return Logger.logFlux(pipeline, "KITCHEN", "GET_PENDING_KITCHEN_ORDERS", start);
+
     }
 
     public Flux<KitchenOrder> getOrdersByStatus(String status) {
-        return kitchenRepository.findByStatus(status);
+        LocalDateTime start = LocalDateTime.now();
+        Flux<KitchenOrder> pipeline= kitchenRepository.findByStatus(status);
+        return Logger.logFlux(pipeline, "KITCHEN", "GET_KITCHEN_ORDERS_BY_STATUS", start);
     }
 
     public Mono<KitchenOrder> startPreparing(String kitchenOrderId) {
 
-        Logger.info(
-                kitchenOrderId,
-                "KITCHEN",
-                "ENTRY_START_PREPARING",
-                "START",
-                "Starting to prepare kitchen order"
-        );
+        LocalDateTime start = LocalDateTime.now();
 
-        return kitchenRepository.findByKitchenOrderId(kitchenOrderId)
+        Mono<KitchenOrder> pipeline= kitchenRepository.findByKitchenOrderId(kitchenOrderId)
 
                 .switchIfEmpty(
                         Mono.error(new NotFoundException("Kitchen order not found"))
@@ -75,19 +75,14 @@ public class KitchenService {
                         orderService.updateOrderStatus(saved.getOrderId(), OrderStatus.PREPARING)
                                 .thenReturn(saved)
                 );
+        return Logger.logMono(pipeline, "KITCHEN", "START_PREP", start);
     }
 
     public Mono<KitchenOrder> markReady(String orderId) {
 
-        Logger.info(
-                orderId,
-                "KITCHEN",
-                "ENTRY_MARK_READY",
-                "START",
-                "Marking kitchen order as ready"
-        );
+        LocalDateTime start = LocalDateTime.now();
 
-        return kitchenRepository.findByKitchenOrderId(orderId)
+        Mono<KitchenOrder> pipeline= kitchenRepository.findByKitchenOrderId(orderId)
                 .switchIfEmpty(
                         Mono.error(new NotFoundException("Kitchen order not found"))
                 )
@@ -101,6 +96,8 @@ public class KitchenService {
                         orderService.updateOrderStatus(saved.getOrderId(), OrderStatus.READY)
                                 .thenReturn(saved)
                 );
+
+        return Logger.logMono(pipeline, "KITCHEN", "MARK_READY", start);
     }
 
 

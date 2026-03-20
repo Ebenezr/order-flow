@@ -20,7 +20,7 @@ public class PaymentFailedConsumer {
     private final OrderService orderService;
     private final ObjectMapper mapper;
 
-    @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC,groupId = "inventory-group")
+    @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC)
     public void handlePaymentFailed(BaseEvent<?> event) {
 
         PaymentFailedPayload payload =
@@ -29,7 +29,7 @@ public class PaymentFailedConsumer {
         String orderId = payload.getOrderId();
 
         inventoryService.releaseReservation(orderId)
-                .then(orderService.cancelOrder(orderId, "payment_failed"))
+                .then(orderService.cancelOrder(orderId, payload.getReason()))
                 .doOnSuccess(v ->
                         Logger.info(orderId, "PAYMENT", "EVENT_FAILURE_FLOW_COMPLETE", "SUCCESS",
                                 "Inventory released and order cancelled")
