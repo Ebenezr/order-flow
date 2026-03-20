@@ -1,5 +1,6 @@
 package com.blind.orderflow.order.repository;
 
+import com.blind.orderflow.inventory.entity.InventoryReservation;
 import com.blind.orderflow.order.entity.Order;
 import com.blind.orderflow.shared.utils.enums.OrderStatus;
 import org.springframework.data.r2dbc.repository.Query;
@@ -30,4 +31,16 @@ public interface OrderRepository extends ReactiveCrudRepository<Order, Long> {
     Mono<Long> countCancelledOrdersBetween(LocalDateTime from, LocalDateTime to);
 
     Flux<Order> findByStatusAndCreatedAtBetween(OrderStatus status, LocalDateTime from, LocalDateTime to);
+
+//    findByStatus
+
+    @Query("""
+    SELECT * FROM orders
+    WHERE status = :status
+    """)
+
+    Flux<Order> findByStatus(OrderStatus status);
+
+
+
 }

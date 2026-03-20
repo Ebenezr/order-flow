@@ -27,6 +27,8 @@ public class InventoryFailedConsumer {
         String orderId = payload.getOrderId();
         String correlationId = event.getCorrelationId();
 
+
+
         orderService.cancelOrder(orderId, payload.getReason(),correlationId)
                 .doOnError(
                         throwable ->
