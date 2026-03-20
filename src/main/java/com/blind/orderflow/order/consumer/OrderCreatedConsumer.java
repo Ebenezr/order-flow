@@ -28,16 +28,16 @@ public class OrderCreatedConsumer {
                 .doOnSuccess(
                         v -> Logger.info(
                                 payload.getOrderId(),
-                                "PAYMENT",
-                                "EVENT_SUCCESS_STOCK_RESERVED",
+                                "INVENTORY",
+                                "EVENT_SUCCESS_RESERVE_STOCK_CALLED",
                                 "INFO",
                                 "Stock reserved successfully, proceeding to payment"
                         )
                 ).doOnError(
                         e -> Logger.error(
                                 payload.getOrderId(),
-                                "PAYMENT",
-                                "EVENT_ERROR_STOCK_RESERVATION_FAILED",
+                                "INVENTORY",
+                                "EVENT_ERROR_RESERVE_STOCK_CALL_FAILED",
                                 "ERROR",
                                 "Stock reservation failed: " + e.getMessage()
                         )

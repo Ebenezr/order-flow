@@ -32,7 +32,7 @@ public class InventoryFailedConsumer {
                             Logger.info(
                                     orderId,
                                     "ORDER",
-                                    "EVENT_ORDER_CANCELLED_INVENTORY_FAILED",
+                                    "EVENT_ORDER_CANCEL_CALL_FAILED",
                                     "SUCCESS",
                                     "Order cancelled due to inventory failure"
                             )
@@ -42,7 +42,7 @@ public class InventoryFailedConsumer {
                                 Logger.info(
                                         orderId,
                                         "ORDER",
-                                        "EVENT_ORDER_CANCELLED_INVENTORY_FAILED",
+                                        "EVENT_ORDER_CANCEL_CALL_SUCCESS",
                                         "SUCCESS",
                                         "Order cancelled due to inventory failure"
                                 )

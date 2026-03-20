@@ -36,6 +36,15 @@ public class OrderController {
                 );
     }
 
+    @PostMapping("/{orderId}/complete")
+    public Mono<?> completeOrder(@PathVariable String orderId) {
+
+        return orderService.completeOrder(orderId)
+                .flatMap(order ->
+                        ResponseFactory.success(order, ResponseFactory.newRequestRefId())
+                );
+    }
+
     @GetMapping("/{orderId}")
     public Mono<ApiResponse<Order>> getOrder(@PathVariable String orderId) {
 
@@ -63,9 +72,11 @@ public class OrderController {
     }
 
         @PostMapping("/{orderId}/cancel")
-        public Mono<ApiResponse<Order>> cancelOrder(@PathVariable String orderId) {
+        public Mono<ApiResponse<Order>> cancelOrder(@PathVariable String orderId,
+        @RequestBody String reason
+        ) {
             return orderService
-                    .cancelOrder(orderId)
+                    .cancelOrder(orderId,reason)
                     .flatMap(order ->
                             ResponseFactory.getRequestRefId()
                                     .flatMap(requestId ->

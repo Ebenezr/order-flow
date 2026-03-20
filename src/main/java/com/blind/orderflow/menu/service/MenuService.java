@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -18,35 +19,31 @@ public class MenuService {
     private final MenuRepository menuRepository;
 
     public Mono<MenuItem> getItem(String productId) {
-        return menuRepository.findByProductId(productId)
+        LocalDateTime start = LocalDateTime.now();
+        Mono<MenuItem> pipeline=  menuRepository.findByProductId(productId)
                 .switchIfEmpty(Mono.error(
                         new NotFoundException("Menu item not found: " + productId)
                 ));
+        return Logger.logMono(pipeline, "MENU", "GET_ITEM", start);
     }
 
     public Flux<MenuItem> getMenu() {
-//        Logger.info(
-//
-//        )
-        return menuRepository.findByAvailableTrue();
+
+        LocalDateTime start = LocalDateTime.now();
+        Flux<MenuItem> pipeline = menuRepository.findByAvailableTrue();
+        return Logger.logFlux(pipeline, "MENU", "CREATE_MENU", start);
     }
 
     public Mono<MenuItem> create(MenuItem item) {
 
+        LocalDateTime start = LocalDateTime.now();
         String productId = UUID.randomUUID().toString();
 
         item.setProductId(productId);
         item.setAvailable(true);
 
-        Logger.info(
-                productId,
-                "MENU",
-                "CREATE_ITEM",
-                "START",
-                "Creating menu item: " + item.getName()
-        );
 
-        return menuRepository.save(item)
+        Mono<MenuItem> pipeline= menuRepository.save(item)
                 .doOnSuccess(saved ->
                         Logger.info(
                                 productId,
@@ -56,11 +53,14 @@ public class MenuService {
                                 "Menu item created"
                         )
                 );
+
+        return Logger.logMono(pipeline, "MENU", "CREATE_MENU", start);
     }
 
     public Mono<MenuItem> update(String productId, MenuItem item) {
 
-        return getItem(productId)
+        LocalDateTime start = LocalDateTime.now();
+        Mono<MenuItem> pipeline= getItem(productId)
                 .flatMap(existing -> {
 
                     existing.setName(item.getName());
@@ -69,14 +69,20 @@ public class MenuService {
 
                     return menuRepository.save(existing);
                 });
+
+        return Logger.logMono(pipeline, "MENU", "UPDATE_MENU", start);
     }
 
     public Mono<MenuItem> setAvailability(String productId, boolean available) {
 
-        return getItem(productId)
+        LocalDateTime start = LocalDateTime.now();
+
+        Mono<MenuItem> pipeline= getItem(productId)
                 .flatMap(existing -> {
                     existing.setAvailable(available);
                     return menuRepository.save(existing);
                 });
+
+        return Logger.logMono(pipeline, "MENU", "SET_MENU_AVAILABILITY", start);
     }
 }
