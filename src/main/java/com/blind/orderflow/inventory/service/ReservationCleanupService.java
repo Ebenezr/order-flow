@@ -23,7 +23,7 @@ public class ReservationCleanupService {
 
             .flatMap(res ->
 
-                inventoryRepository.findByProductId(res.getProductId())
+                inventoryRepository.findByIngredientId(res.getIngredientId())
 
                     .flatMap(inv -> {
 
@@ -43,7 +43,7 @@ public class ReservationCleanupService {
                             "INVENTORY",
                             "RESERVATION_EXPIRED",
                             "INFO",
-                            "Released expired reservation for product " + r.getProductId()
+                            "Released expired reservation for product " + r.getIngredientId()
                     ))
             .subscribe();
     }

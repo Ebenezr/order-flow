@@ -51,7 +51,7 @@ public class InventoryService {
                                             InventoryReservation.builder()
                                                     .reservationId(UUID.randomUUID().toString())
                                                     .orderId(orderId)
-                                                    .productId(item.getProductId())
+                                                    .ingredientId(item.getProductId())
                                                     .quantity(item.getQuantity())
                                                     .status("RESERVED")
                                                     .createdAt(LocalDateTime.now())
@@ -118,7 +118,7 @@ public class InventoryService {
 
                 .flatMap(res ->
 
-                        inventoryRepository.findByProductId(res.getProductId())
+                        inventoryRepository.findByIngredientId(res.getIngredientId())
 
                                 .flatMap(inv -> {
 

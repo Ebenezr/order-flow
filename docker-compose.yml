@@ -34,6 +34,15 @@ services:
     depends_on:
       - kafka
 
+  mongo:
+    image: mongo:7
+    container_name: order-flow-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
 volumes:
   kafka-data:
+  mongo-data:
 

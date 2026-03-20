@@ -19,8 +19,8 @@ public class Inventory {
     @Id
     private Long id;
 
-    private String productId;
-    private String productName;
+    private String ingredientId;
+    private String ingredientName;
     private String category;
     private Integer availableQuantity;
     private LocalDateTime updatedAt;
