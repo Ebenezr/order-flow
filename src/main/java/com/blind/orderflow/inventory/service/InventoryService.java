@@ -102,6 +102,9 @@ public class InventoryService {
 
                     return reservationRepository.save(res);
                 })
+                .doOnError(error ->
+                        Logger.error(orderId, "INVENTORY", "CONFIRM", "ERROR", error.getMessage())
+                )
                 .then();
     }
 

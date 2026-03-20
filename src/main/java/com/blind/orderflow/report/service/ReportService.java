@@ -73,20 +73,19 @@ public class ReportService {
                                             item -> item.getProductId() + "|" + item.getProductName()
                                     ))
                                     .entrySet().stream()
-                                    .map(entry -> {
-                                        String[] parts = entry.getKey().split("\\|", 2);
-                                        long qty = entry.getValue().stream()
-                                                .mapToLong(i -> i.getQuantity())
-                                                .sum();
-                                        double revenue = entry.getValue().stream()
-                                                .mapToDouble(i -> i.getPrice() * i.getQuantity())
-                                                .sum();
-                                        return TopSellingItem.builder()
-                                                .productId(parts[0])
-                                                .productName(parts.length > 1 ? parts[1] : parts[0])
-                                                .totalQuantity(qty)
-                                                .totalRevenue(round(revenue))
-                                                .build();
+                                    .map(entry -> {                                         String[] parts = entry.getKey().split("\\|", 2);
+                                         long qty = entry.getValue().stream()
+                                                 .mapToLong(i -> i.getQuantity())
+                                                 .sum();
+                                         BigDecimal revenue = entry.getValue().stream()
+                                                 .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                         return TopSellingItem.builder()
+                                                 .productId(parts[0])
+                                                 .productName(parts.length > 1 ? parts[1] : parts[0])
+                                                 .totalQuantity(qty)
+                                                 .totalRevenue(revenue.setScale(2, RoundingMode.HALF_UP))
+                                                 .build();
                                     })
                                     .sorted(Comparator.comparingLong(TopSellingItem::getTotalQuantity).reversed())
                                     .limit(10)
@@ -348,12 +347,8 @@ public class ReportService {
                             .collectList()
                             .map(items -> items.stream()
                                     .collect(Collectors.groupingBy(
-                                            item -> item.getCategory() != null
-                                                    ? item.getCategory()
-                                                    : "Uncategorized",
-                                            Collectors.summingDouble(
-                                                    item -> item.getPrice() * item.getQuantity()
-                                            )
+                                            item -> item.getCategory() != null ? item.getCategory() : "Uncategorized",
+                                            Collectors.summingDouble(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())).doubleValue())
                                     ))
                                     .entrySet().stream()
                                     .map(entry -> CategoryRevenue.builder()
@@ -403,4 +398,3 @@ public class ReportService {
                 .doubleValue();
     }
 }
-

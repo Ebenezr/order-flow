@@ -29,14 +29,14 @@ public class KitchenPaymentCompleteConsumer {
                         Logger.info(
                                 payload.getOrderId(),
                                 "KITCHEN",
-                                "PAYMENT_COMPLETED_CONSUMER",
+                                "SUCCESS_PAYMENT_COMPLETED_CONSUMER",
                                 "SUCCESS",
                                 "Created kitchen order for payment completed event"
                         ))
                 .doOnError(e -> Logger.error(
                         payload.getOrderId(),
                         "KITCHEN",
-                        "PAYMENT_COMPLETED_CONSUMER",
+                        "ERROR_PAYMENT_COMPLETED_CONSUMER",
                         "ERROR",
                         "Failed to create kitchen order for payment completed event: " + e.getMessage()
                 ))

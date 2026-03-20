@@ -1,5 +1,6 @@
 package com.blind.orderflow.order.controller;
 
+import com.blind.orderflow.order.dto.CreateOrderItemRequest;
 import com.blind.orderflow.order.entity.Order;
 import com.blind.orderflow.order.entity.OrderItem;
 import com.blind.orderflow.order.service.OrderService;
@@ -22,7 +23,7 @@ public class OrderController {
     @PostMapping
     public Mono<ApiResponse<Order>> createOrder(
             @RequestParam String customerId,
-            @RequestBody Flux<OrderItem> items
+            @RequestBody Flux<CreateOrderItemRequest> items
     ) {
 
         return orderService
