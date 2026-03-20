@@ -7,6 +7,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -30,19 +31,19 @@ public class Order {
     private LocalDateTime updatedAt;
 
     @Column("subtotal")
-    private Double subtotal;
+    private BigDecimal subtotal;
 
     @Column("vat")
-    private Double vat;
+    private BigDecimal vat;
 
     @Column("service_charge")
-    private Double serviceCharge;
+    private BigDecimal serviceCharge;
 
     @Column("discount")
-    private Double discount;
+    private BigDecimal discount;
 
     @Column("total_amount")
-    private Double totalAmount;
+    private BigDecimal totalAmount;
 
     @Column("cancellation_reason")
     private String cancellationReason;

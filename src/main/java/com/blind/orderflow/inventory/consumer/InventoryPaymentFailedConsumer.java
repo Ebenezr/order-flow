@@ -30,7 +30,7 @@ public class InventoryPaymentFailedConsumer {
                     Logger.error(
                             payload.getOrderId(),
                             "INVENTORY",
-                            "RELEASE_RESERVATION",
+                            "ERROR_RELEASE_RESERVATION",
                             "ERROR",
                             "Failed to release inventory reservation: " + throwable.getMessage()
                     );
@@ -39,7 +39,7 @@ public class InventoryPaymentFailedConsumer {
                         result -> Logger.info(
                                 payload.getOrderId(),
                                 "INVENTORY",
-                                "RELEASE_RESERVATION",
+                                "SUCCESS_RELEASE_RESERVATION",
                                 "SUCCESS",
                                 "Inventory reservation released successfully"
                         )

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Table("receipts")
@@ -25,15 +26,15 @@ public class Receipt {
 
     private String transactionId;
 
-    private Double subtotal;
+    private BigDecimal subtotal;
 
-    private Double vat;
+    private BigDecimal vat;
 
-    private Double serviceCharge;
+    private BigDecimal serviceCharge;
 
-    private Double discount;
+    private BigDecimal discount;
 
-    private Double total;
+    private BigDecimal total;
 
     private String vatNumber;
 

@@ -4,6 +4,7 @@ import com.blind.orderflow.config.KafkaConfig;
 import com.blind.orderflow.order.service.OrderService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.InventoryFailedPayload;
+import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -23,6 +24,29 @@ public class InventoryFailedConsumer {
         InventoryFailedPayload payload =
                 mapper.convertValue(event.getPayload(), InventoryFailedPayload.class);
 
-        orderService.cancelOrder(payload.getOrderId(), "inventory_unavailable").subscribe();
+        orderService.cancelOrder(payload.getOrderId(), "inventory_unavailable")
+                .doOnError(
+                        throwable -> {
+                            Logger.error(
+                                    payload.getOrderId(),
+                                    "INVENTORY",
+                                    "ERROR_CANCEL_ORDER",
+                                    "SUCCESS",
+                                    throwable.getMessage()
+                            );
+                        }
+                )
+                .doOnSuccess(
+                        order -> {
+                            Logger.info(
+                                    payload.getOrderId(),
+                                    "INVENTORY",
+                                    "ORDER_CANCELLED_DUE_TO_INVENTORY_FAILURE",
+                                    "SUCCESS",
+                                    "Order cancelled due to inventory failure"
+                            );
+                        }
+                )
+                .subscribe();
     }
 }

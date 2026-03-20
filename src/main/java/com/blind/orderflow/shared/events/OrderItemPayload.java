@@ -1,21 +1,16 @@
-package com.blind.orderflow.report.dto;
+package com.blind.orderflow.shared.events;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TopSellingItem {
-
+public class OrderItemPayload {
     private String productId;
     private String productName;
-    private Long totalQuantity;
-    private BigDecimal totalRevenue;
+    private int quantity;
 }
-

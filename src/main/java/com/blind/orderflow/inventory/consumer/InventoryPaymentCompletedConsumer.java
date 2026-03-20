@@ -30,7 +30,7 @@ public class InventoryPaymentCompletedConsumer {
                     Logger.error(
                             payload.getOrderId(),
                             "INVENTORY",
-                            "CONFIRM_RESERVATION",
+                            "ERROR_CONFIRM_RESERVATION",
                             "ERROR",
                             "Failed to confirm inventory reservation: " + throwable.getMessage()
                     );
@@ -39,7 +39,7 @@ public class InventoryPaymentCompletedConsumer {
                     Logger.info(
                             payload.getOrderId(),
                             "INVENTORY",
-                            "CONFIRM_RESERVATION",
+                            "SUCCESS_CONFIRM_RESERVATION",
                             "SUCCESS",
                             "Inventory reservation confirmed successfully"
                     );

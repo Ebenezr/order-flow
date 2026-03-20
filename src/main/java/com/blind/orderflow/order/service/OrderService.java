@@ -1,5 +1,7 @@
 package com.blind.orderflow.order.service;
 
+import com.blind.orderflow.menu.service.MenuService;
+import com.blind.orderflow.order.dto.CreateOrderItemRequest;
 import com.blind.orderflow.order.entity.Order;
 import com.blind.orderflow.order.entity.OrderItem;
 import com.blind.orderflow.order.repository.OrderItemRepository;
@@ -7,6 +9,7 @@ import com.blind.orderflow.order.repository.OrderRepository;
 import com.blind.orderflow.order.state.OrderStateMachine;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.OrderCreatedPayload;
+import com.blind.orderflow.shared.events.OrderItemPayload;
 import com.blind.orderflow.shared.exceptions.OrderNotFoundException;
 import com.blind.orderflow.shared.kafka.KafkaProducerService;
 import com.blind.orderflow.shared.utils.enums.OrderStatus;
@@ -15,9 +18,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static com.blind.orderflow.config.KafkaConfig.ORDER_CREATED_TOPIC;
@@ -29,8 +35,9 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final MenuService menuService;
 
-    public Mono<Order> createOrder(String customerId, Flux<OrderItem> items) {
+    public Mono<Order> createOrder(String customerId, Flux<CreateOrderItemRequest> items) {
 
         LocalDateTime start = LocalDateTime.now();
         String orderId = UUID.randomUUID().toString();
@@ -50,38 +57,79 @@ public class OrderService {
                 orderRepository.save(order)
                         .flatMap(savedOrder ->
                                 items
-                                        .doOnNext(item -> item.setOrderId(orderId))
+                                        .flatMap(req ->
+                                                menuService.getItem(req.getProductId())
+                                                        .map(menuItem -> {
+
+                                                            OrderItem item = new OrderItem();
+                                                            item.setOrderId(orderId);
+                                                            item.setProductId(menuItem.getProductId());
+                                                            item.setProductName(menuItem.getName());
+                                                            item.setPrice(BigDecimal.valueOf(menuItem.getPrice()));
+                                                            item.setQuantity(req.getQuantity());
+                                                            item.setProductSnapshot(menuItem.toString());
+
+                                                            return item;
+                                                        })
+                                        )
                                         .flatMap(orderItemRepository::save)
                                         .collectList()
-                                        .flatMap(savedItems -> {
-                                            double subtotal = savedItems.stream()
-                                                    .mapToDouble(item -> item.getPrice() * item.getQuantity())
-                                                    .sum();
-                                            double vat = subtotal * 0.15;
-
-                                            double serviceCharge = 0;
-
-                                            double discount = 0;
-
-                                            double total = subtotal + vat + serviceCharge - discount;
-
-                                            savedOrder.setTotalAmount(total);
-                                            savedOrder.setServiceCharge(serviceCharge);
-                                            savedOrder.setDiscount(discount);
-                                            savedOrder.setVat(vat);
-                                            savedOrder.setSubtotal(subtotal);
-                                            return orderRepository.save(savedOrder);
-                                        })
+                                        .map(savedItems -> Tuples.of(savedOrder, savedItems))
                         )
-                        .flatMap(savedOrder -> {
+                        .flatMap(tuple -> {
 
 
+                            Order savedOrder = tuple.getT1();
+                            List<OrderItem> savedItems = tuple.getT2();
+
+                            BigDecimal subtotal = savedItems.stream()
+                                    .map(item ->
+                                            item.getPrice()
+                                                    .multiply(BigDecimal.valueOf(item.getQuantity()))
+                                    )
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                            BigDecimal vat = subtotal.multiply(BigDecimal.valueOf(0.15));
+
+                            BigDecimal serviceCharge = BigDecimal.ZERO;
+                            BigDecimal discount = BigDecimal.ZERO;
+
+                            BigDecimal total = subtotal
+                                    .add(vat)
+                                    .add(serviceCharge)
+                                    .subtract(discount);
+
+                            savedOrder.setSubtotal(subtotal);
+                            savedOrder.setVat(vat);
+                            savedOrder.setServiceCharge(serviceCharge);
+                            savedOrder.setDiscount(discount);
+                            savedOrder.setTotalAmount(total);
+
+                            return orderRepository.save(savedOrder)
+                                    .map(updated -> Tuples.of(updated, savedItems));
+                        })
+                        .flatMap(tuple -> {
+
+                            Order savedOrder = tuple.getT1();
+                            List<OrderItem> savedItems = tuple.getT2();
+
+                            List<OrderItemPayload> itemPayloads =
+                                    savedItems.stream()
+                                            .map(item ->
+                                                    OrderItemPayload.builder()
+                                                            .productId(item.getProductId())
+                                                            .productName(item.getProductName())
+                                                            .quantity(item.getQuantity())
+                                                            .build()
+                                            )
+                                            .toList();
 
                             OrderCreatedPayload payload =
                                     OrderCreatedPayload.builder()
-                                            .orderId(orderId)
-                                            .customerId(customerId)
+                                            .orderId(savedOrder.getOrderId())
+                                            .customerId(savedOrder.getCustomerId())
                                             .totalAmount(savedOrder.getTotalAmount())
+                                            .items(itemPayloads)
                                             .build();
 
                             BaseEvent<OrderCreatedPayload> event =
@@ -94,13 +142,13 @@ public class OrderService {
                                             .build();
 
                             return kafkaProducerService
-                                    .send(ORDER_CREATED_TOPIC, orderId, event)
+                                    .send(ORDER_CREATED_TOPIC, savedOrder.getOrderId(), event)
                                     .thenReturn(savedOrder);
                         });
 
+
         return Logger.logMono(pipeline, "ORDER", "CREATE_ORDER", start);
     }
-
 
     public Mono<Order> getOrder(String orderId) {
 
@@ -137,6 +185,10 @@ public class OrderService {
         return cancelOrder(orderId, "manual");
     }
 
+
+
+
+
     public Mono<Order> cancelOrder(String orderId, String reason) {
 
         LocalDateTime start = LocalDateTime.now();
@@ -149,24 +201,30 @@ public class OrderService {
                 "Cancelling order"
         );
 
-        Mono<Order> pipeline =
-                orderRepository
-                        .findByOrderId(orderId)
-                        .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
-                        .flatMap(order -> {
-                            OrderStateMachine.validate(order.getStatus(), OrderStatus.CANCELLED);
-                            order.setStatus(OrderStatus.CANCELLED);
-                            order.setCancellationReason(reason);
-                            order.setUpdatedAt(LocalDateTime.now());
-                            return orderRepository.save(order);
-                        });
+        return orderRepository.findByOrderId(orderId)
+                .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
+                .flatMap(order -> {
 
-        return Logger.logMono(
-                pipeline,
-                "ORDER",
-                "CANCEL_ORDER",
-                start
-        );
+                    // ✅ already cancelled → just return (idempotent)
+                    if (order.getStatus() == OrderStatus.CANCELLED) {
+                        Logger.info(
+                                orderId,
+                                "ORDER",
+                                "CANCEL_ORDER_SKIP",
+                                "INFO",
+                                "Order already cancelled"
+                        );
+                        return Mono.just(order);
+                    }
+
+                    // normal flow
+                    OrderStateMachine.validate(order.getStatus(), OrderStatus.CANCELLED);
+
+                    order.setStatus(OrderStatus.CANCELLED);
+                    order.setUpdatedAt(LocalDateTime.now());
+
+                    return orderRepository.save(order);
+                });
     }
 
     public Mono<Order> markPaymentConfirmed(String orderId) {

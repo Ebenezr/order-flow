@@ -32,7 +32,7 @@ public class OrderCreatedConsumer {
                         v -> Logger.info(
                                 payload.getOrderId(),
                                 "PAYMENT",
-                                "STOCK_RESERVED",
+                                "SUCCESS_STOCK_RESERVED",
                                 "INFO",
                                 "Stock reserved successfully, proceeding to payment"
                         )
@@ -40,7 +40,7 @@ public class OrderCreatedConsumer {
                         e -> Logger.error(
                                 payload.getOrderId(),
                                 "PAYMENT",
-                                "STOCK_RESERVATION_FAILED",
+                                "ERROR_STOCK_RESERVATION_FAILED",
                                 "ERROR",
                                 "Stock reservation failed: " + e.getMessage()
                         )
@@ -48,7 +48,7 @@ public class OrderCreatedConsumer {
                 .subscribe();
     }
 
-    @KafkaListener(topics = KafkaConfig.INVENTORY_RESERVED_TOPIC)
+    @KafkaListener(topics = KafkaConfig.INVENTORY_RESERVED_TOPIC,groupId = "inventory-group")
     public void handleInventoryReserved(BaseEvent<?> event) {
 
         InventoryReservedPayload payload =
@@ -59,14 +59,14 @@ public class OrderCreatedConsumer {
                 .doOnError(e -> Logger.error(
                         payload.getOrderId(),
                         "PAYMENT",
-                        "PAYMENT_PROCESSING_FAILED",
+                        "ERROR_PAYMENT_PROCESSING_FAILED",
                         "ERROR",
                         "Payment processing failed: " + e.getMessage()
                 ))
                 .doOnSuccess(e -> Logger.info(
                         payload.getOrderId(),
                         "PAYMENT",
-                        "PAYMENT_PROCESSED",
+                        "SUCCESS_PAYMENT_PROCESSED",
                         "INFO",
                         "Payment processed successfully"
                 ))

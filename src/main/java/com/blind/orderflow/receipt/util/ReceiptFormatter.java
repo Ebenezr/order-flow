@@ -2,6 +2,7 @@ package com.blind.orderflow.receipt.util;
 
 import com.blind.orderflow.receipt.model.ReceiptLine;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -14,11 +15,11 @@ public class ReceiptFormatter {
             String orderId,
             String transactionId,
             List<ReceiptLine> items,
-            double subtotal,
-            double vat,
-            double serviceCharge,
-            double discount,
-            double total) {
+            BigDecimal subtotal,
+            BigDecimal vat,
+            BigDecimal serviceCharge,
+            BigDecimal discount,
+            BigDecimal total) {
 
         StringBuilder receipt = new StringBuilder();
 

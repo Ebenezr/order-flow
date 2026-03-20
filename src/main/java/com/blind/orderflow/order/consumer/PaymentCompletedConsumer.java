@@ -43,13 +43,13 @@ public class PaymentCompletedConsumer {
                 }).doOnError(e -> Logger.error(
                         payload.getOrderId(),
                         "ORDER",
-                        "RECEIPT_PRINT_FAILED",
+                        "ERROR_RECEIPT_PRINT_FAILED",
                         "ERROR",
                         "Failed to print receipt: " + e.getMessage()
                 )).doOnSuccess(e -> Logger.info(
                         payload.getOrderId(),
                         "ORDER",
-                        "RECEIPT_PRINTED",
+                        "SUCCESS_RECEIPT_PRINTED",
                         "INFO",
                         "Receipt printed successfully"
                 ))

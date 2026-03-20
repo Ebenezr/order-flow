@@ -30,13 +30,13 @@ public class PaymentFailedConsumer {
                 .doOnError(e -> Logger.error(
                         payload.getOrderId(),
                         "ORDER",
-                        "ORDER_CANCEL_FAILED",
+                        "ERROR_ORDER_CANCEL_FAILED",
                         "ERROR",
                         "Failed to cancel order: " + e.getMessage()
                 )).doOnSuccess(e -> Logger.info(
                         payload.getOrderId(),
                         "ORDER",
-                        "ORDER_CANCELED",
+                        "SUCCESS_ORDER_CANCELED",
                         "INFO",
                         "Order canceled successfully"
                 ))
