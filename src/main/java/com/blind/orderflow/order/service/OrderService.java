@@ -191,8 +191,6 @@ public class OrderService {
 
     public Mono<Order> cancelOrder(String orderId, String reason) {
 
-        LocalDateTime start = LocalDateTime.now();
-
         Logger.info(
                 orderId,
                 "ORDER",
@@ -205,7 +203,7 @@ public class OrderService {
                 .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
                 .flatMap(order -> {
 
-                    // ✅ already cancelled → just return (idempotent)
+                    //  already cancelled → just return (idempotent)
                     if (order.getStatus() == OrderStatus.CANCELLED) {
                         Logger.info(
                                 orderId,
@@ -221,44 +219,11 @@ public class OrderService {
                     OrderStateMachine.validate(order.getStatus(), OrderStatus.CANCELLED);
 
                     order.setStatus(OrderStatus.CANCELLED);
+                    order.setCancellationReason(reason);
                     order.setUpdatedAt(LocalDateTime.now());
 
                     return orderRepository.save(order);
                 });
-    }
-
-    public Mono<Order> markPaymentConfirmed(String orderId) {
-
-        LocalDateTime start = LocalDateTime.now();
-
-        Logger.info(
-                orderId,
-                "ORDER",
-                "PAYMENT_CONFIRMED",
-                "START",
-                "Marking order as payment confirmed"
-        );
-
-        Mono<Order> pipeline =
-                orderRepository
-                        .findByOrderId(orderId)
-                        .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
-                        .flatMap(order -> {
-
-                            OrderStateMachine.validate(order.getStatus(), OrderStatus.CONFIRMED);
-
-                            order.setStatus(OrderStatus.CONFIRMED);
-                            order.setUpdatedAt(LocalDateTime.now());
-
-                            return orderRepository.save(order);
-                        });
-
-        return Logger.logMono(
-                pipeline,
-                "ORDER",
-                "PAYMENT_CONFIRMED",
-                start
-        );
     }
 
     public Mono<Order> confirmOrder(String orderId) {
@@ -270,7 +235,7 @@ public class OrderService {
                         .findByOrderId(orderId)
                         .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
                         .flatMap(order -> {
-
+                            OrderStateMachine.validate(order.getStatus(), OrderStatus.CONFIRMED);
                             order.setStatus(OrderStatus.CONFIRMED);
                             order.setUpdatedAt(LocalDateTime.now());
 
