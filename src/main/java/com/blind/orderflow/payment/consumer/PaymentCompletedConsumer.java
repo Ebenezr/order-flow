@@ -36,8 +36,9 @@ public class PaymentCompletedConsumer {
                 mapper.convertValue(event.getPayload(), PaymentCompletedPayload.class);
 
         String orderId = payload.getOrderId();
+        String correlationId = event.getCorrelationId();
 
-        inventoryService.confirmReservation(orderId)
+        inventoryService.confirmReservation(orderId,correlationId)
                 .then(orderService.confirmOrder(orderId))
                         .then(kitchenService.createKitchenOrder(orderId))
                 .then(
@@ -56,13 +57,15 @@ public class PaymentCompletedConsumer {
                                 })
                 )
                 .doOnSuccess(v ->
-                        Logger.info(orderId, "ORDER", "EVENT_PAYMENT_FLOW_COMPLETE", "SUCCESS",
+                        Logger.info(correlationId, "ORDER", "EVENT_PAYMENT_FLOW_COMPLETE", "SUCCESS",
                                 "Order fully processed after payment")
                 )
 
                 .doOnError(e ->
-                        Logger.error(orderId, "ORDER", "EVENT_PAYMENT_FLOW_ERROR", "ERROR",
+                        Logger.error(correlationId, "ORDER", "EVENT_PAYMENT_FLOW_ERROR", "ERROR",
                                 e.getMessage())
-                ).subscribe();
+                )
+                .contextWrite(ctx -> ctx.put("correlationId", correlationId))
+                .subscribe();
     }
 }

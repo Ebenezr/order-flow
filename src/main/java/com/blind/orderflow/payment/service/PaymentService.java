@@ -27,7 +27,7 @@ public class PaymentService {
     private final KafkaProducerService kafkaProducerService;
     private final OrderRepository orderRepository;
 
-    public Mono<Void> processPayment(String orderId) {
+    public Mono<Void> processPayment(String orderId,String correlationId) {
 
         LocalDateTime start = LocalDateTime.now();
 
@@ -37,7 +37,7 @@ public class PaymentService {
                 //  skip dups
                 .flatMap(existing -> {
                     Logger.info(
-                            orderId,
+                            correlationId,
                             "PAYMENT",
                             "SKIP_DUPLICATE",
                             "INFO",
@@ -50,11 +50,11 @@ public class PaymentService {
                                 .flatMap(order -> {
 
                                     if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
-                                        Logger.info(orderId, "PAYMENT", "SKIP_INVALID_STATE", "INFO", "Invalid state");
+                                        Logger.info(correlationId, "PAYMENT", "SKIP_INVALID_STATE", "INFO", "Invalid state");
                                         return Mono.empty();
                                     }
 
-                                    return processNewPayment(orderId);
+                                    return processNewPayment(orderId,correlationId);
                                 })
                 );
 
@@ -62,7 +62,7 @@ public class PaymentService {
     }
 
 
-    private Mono<Void> processNewPayment(String orderId) {
+    private Mono<Void> processNewPayment(String orderId,String correlationId) {
 
         LocalDateTime start = LocalDateTime.now();
         String transactionId = UUID.randomUUID().toString();
@@ -72,7 +72,7 @@ public class PaymentService {
 
                     if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
                         Logger.info(
-                                orderId,
+                                correlationId,
                                 "PAYMENT",
                                 "SKIP_INVALID_STATE",
                                 "INFO",
@@ -100,7 +100,7 @@ public class PaymentService {
 
 
                     Logger.info(
-                            orderId,
+                            correlationId,
                             "PAYMENT",
                             "PAYMENT_DECISION",
                             "INFO",
@@ -114,7 +114,7 @@ public class PaymentService {
                         saved.setUpdatedAt(LocalDateTime.now());
 
                         Logger.info(
-                                orderId,
+                                correlationId,
                                 "PAYMENT",
                                 "PAYMENT_SUCCESS",
                                 "INFO",
@@ -125,12 +125,12 @@ public class PaymentService {
                                 .then(kafkaProducerService.send(
                                         KafkaConfig.PAYMENT_COMPLETED_TOPIC,
                                         orderId,
-                                        buildCompletedEvent(orderId, transactionId)
+                                        buildCompletedEvent(orderId, transactionId,correlationId)
                                 ));
                     } else {
 
                         Logger.info(
-                                orderId,
+                                correlationId,
                                 "PAYMENT",
                                 "PAYMENT_SUCCESS",
                                 "INFO",
@@ -144,23 +144,23 @@ public class PaymentService {
                                 .then(kafkaProducerService.send(
                                         KafkaConfig.PAYMENT_FAILED_TOPIC,
                                         orderId,
-                                        buildFailedEvent(orderId)
+                                        buildFailedEvent(orderId,correlationId)
                                 ));
                     }
                 })
                 .doOnSuccess(v ->
-                        Logger.info(orderId, "PAYMENT", "EVENT_PUBLISHED", "SUCCESS",
+                        Logger.info(correlationId, "PAYMENT", "EVENT_PUBLISHED", "SUCCESS",
                                 "Payment event published to Kafka")
                 )
                 .doOnError(e ->
-                        Logger.error(orderId, "PAYMENT", "EVENT_PUBLISH_FAILED", "ERROR",
+                        Logger.error(correlationId, "PAYMENT", "EVENT_PUBLISH_FAILED", "ERROR",
                                 e.getMessage())
                 );
 
         return Logger.logMono(pipeline, "PAYMENT", "PROCESS_NEW_PAYMENT", start);
     }
 
-    private BaseEvent<PaymentCompletedPayload> buildCompletedEvent(String orderId, String transactionId) {
+    private BaseEvent<PaymentCompletedPayload> buildCompletedEvent(String orderId, String transactionId,String correlationId) {
 
         PaymentCompletedPayload payload =
                 PaymentCompletedPayload.builder()
@@ -170,6 +170,7 @@ public class PaymentService {
 
         return BaseEvent.<PaymentCompletedPayload>builder()
                 .eventId(UUID.randomUUID())
+                .correlationId(correlationId)
                 .eventType("PaymentCompleted")
                 .version(1)
                 .occurredAt(Instant.now())
@@ -177,7 +178,7 @@ public class PaymentService {
                 .build();
     }
 
-    private BaseEvent<PaymentFailedPayload> buildFailedEvent(String orderId) {
+    private BaseEvent<PaymentFailedPayload> buildFailedEvent(String orderId,String correlationId) {
 
         PaymentFailedPayload payload =
                 PaymentFailedPayload.builder()
@@ -187,6 +188,7 @@ public class PaymentService {
 
         return BaseEvent.<PaymentFailedPayload>builder()
                 .eventId(UUID.randomUUID())
+                .correlationId(correlationId)
                 .eventType("PaymentFailed")
                 .version(1)
                 .occurredAt(Instant.now())

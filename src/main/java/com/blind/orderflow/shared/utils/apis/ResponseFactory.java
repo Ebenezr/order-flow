@@ -65,9 +65,8 @@ public final class ResponseFactory {
     }
 
     public static Mono<String> getRequestRefId() {
-
         return Mono.deferContextual(ctx ->
-                Mono.justOrEmpty(ctx.getOrDefault("correlationId", UUID.randomUUID().toString()))
+                Mono.just(ctx.getOrDefault("correlationId", "N/A"))
         );
     }
 

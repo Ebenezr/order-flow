@@ -25,12 +25,13 @@ public class InventoryFailedConsumer {
                 mapper.convertValue(event.getPayload(), InventoryFailedPayload.class);
 
         String orderId = payload.getOrderId();
+        String correlationId = event.getCorrelationId();
 
-        orderService.cancelOrder(orderId, payload.getReason())
+        orderService.cancelOrder(orderId, payload.getReason(),correlationId)
                 .doOnError(
                         throwable ->
                             Logger.info(
-                                    orderId,
+                                    correlationId,
                                     "ORDER",
                                     "EVENT_ORDER_CANCEL_CALL_FAILED",
                                     "SUCCESS",
@@ -40,7 +41,7 @@ public class InventoryFailedConsumer {
                 .doOnSuccess(
                         order ->
                                 Logger.info(
-                                        orderId,
+                                        correlationId,
                                         "ORDER",
                                         "EVENT_ORDER_CANCEL_CALL_SUCCESS",
                                         "SUCCESS",
@@ -48,6 +49,7 @@ public class InventoryFailedConsumer {
                                 )
 
                 )
+                .contextWrite(ctx -> ctx.put("correlationId", correlationId))
                 .subscribe();
     }
 }

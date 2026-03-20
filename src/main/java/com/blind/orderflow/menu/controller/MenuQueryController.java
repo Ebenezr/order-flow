@@ -22,7 +22,9 @@ public class MenuQueryController {
         return menuService.getMenu()
                 .collectList()
                 .flatMap(menu ->
-                        ResponseFactory.success(menu, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(menu, requestId))
                 );
     }
 
@@ -32,7 +34,9 @@ public class MenuQueryController {
         return menuService.getMenu()
                 .collectList()
                 .flatMap(menu ->
-                        ResponseFactory.success(menu, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(menu, requestId))
                 );
     }
 
@@ -41,7 +45,9 @@ public class MenuQueryController {
 
         return menuService.getItem(productId)
                 .flatMap(item ->
-                        ResponseFactory.success(item, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(item, requestId))
                 );
     }
 }

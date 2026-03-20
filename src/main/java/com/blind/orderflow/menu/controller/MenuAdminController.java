@@ -19,7 +19,9 @@ public class MenuAdminController {
 
         return menuService.create(item)
                 .flatMap(result ->
-                        ResponseFactory.success(result, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(result, requestId))
                 );
     }
 
@@ -31,7 +33,9 @@ public class MenuAdminController {
 
         return menuService.update(productId, item)
                 .flatMap(result ->
-                        ResponseFactory.success(result, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(result, requestId))
                 );
     }
 
@@ -43,7 +47,9 @@ public class MenuAdminController {
 
         return menuService.setAvailability(productId, available)
                 .flatMap(result ->
-                        ResponseFactory.success(result, ResponseFactory.newRequestRefId())
+                        ResponseFactory.getRequestRefId()
+                                .flatMap(requestId ->
+                        ResponseFactory.success(result, requestId))
                 );
     }
 }

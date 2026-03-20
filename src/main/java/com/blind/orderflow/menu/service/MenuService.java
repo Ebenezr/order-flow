@@ -24,14 +24,14 @@ public class MenuService {
                 .switchIfEmpty(Mono.error(
                         new NotFoundException("Menu item not found: " + productId)
                 ));
-        return Logger.logMono(pipeline, "MENU", "GET_ITEM", start);
+        return Logger.logMono(pipeline, "MENU", "GET_MENU_ITEM", start);
     }
 
     public Flux<MenuItem> getMenu() {
 
         LocalDateTime start = LocalDateTime.now();
         Flux<MenuItem> pipeline = menuRepository.findByAvailableTrue();
-        return Logger.logFlux(pipeline, "MENU", "CREATE_MENU", start);
+        return Logger.logFlux(pipeline, "MENU", "GET_MENU", start);
     }
 
     public Mono<MenuItem> create(MenuItem item) {
