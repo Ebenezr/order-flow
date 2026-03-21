@@ -102,4 +102,12 @@ public final class ResponseFactory {
     ) {
         return error(errorCode, message, message, status);
     }
+
+    public static <T> Mono<?> successWithContext(T data) {
+
+        return getRequestRefId()
+                .flatMap(requestId ->
+                        success(data, requestId)
+                );
+    }
 }
