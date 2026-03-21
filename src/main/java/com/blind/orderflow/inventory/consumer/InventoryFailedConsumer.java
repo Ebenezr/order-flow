@@ -4,6 +4,7 @@ import com.blind.orderflow.config.KafkaConfig;
 import com.blind.orderflow.order.service.OrderService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.InventoryFailedPayload;
+import com.blind.orderflow.shared.idempotency.IdempotencyService;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class InventoryFailedConsumer {
 
     private final OrderService orderService;
     private final ObjectMapper mapper;
+    private final IdempotencyService idempotencyService;
 
 
     @KafkaListener(topics = KafkaConfig.INVENTORY_FAILED_TOPIC)
@@ -26,10 +28,15 @@ public class InventoryFailedConsumer {
 
         String orderId = payload.getOrderId();
         String correlationId = event.getCorrelationId();
+        String eventId = String.valueOf(event.getEventId());
 
 
-
-        orderService.cancelOrder(orderId, payload.getReason(),correlationId)
+        idempotencyService.executeOnceVoid(
+                eventId,
+                correlationId,
+                "ORDER",
+                () -> orderService.cancelOrder(orderId, payload.getReason(),correlationId).then()
+                )
                 .doOnError(
                         throwable ->
                             Logger.info(

@@ -9,6 +9,7 @@ import com.blind.orderflow.order.service.OrderService;
 import com.blind.orderflow.receipt.service.ReceiptService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.PaymentCompletedPayload;
+import com.blind.orderflow.shared.idempotency.IdempotencyService;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class PaymentCompletedConsumer {
     private final ReceiptService receiptService;
     private final KitchenService kitchenService;
     private final InventoryService inventoryService;
+    private final IdempotencyService idempotencyService;
     private final ObjectMapper mapper;
 
     @KafkaListener(topics = KafkaConfig.PAYMENT_COMPLETED_TOPIC)
@@ -37,25 +39,31 @@ public class PaymentCompletedConsumer {
 
         String orderId = payload.getOrderId();
         String correlationId = event.getCorrelationId();
+        String eventId = String.valueOf(event.getEventId());
 
-        inventoryService.confirmReservation(orderId,correlationId)
-                .then(orderService.confirmOrder(orderId))
+        idempotencyService.executeOnceVoid(
+                eventId,
+                correlationId,
+                "ORDER",
+                () ->  inventoryService.confirmReservation(orderId,correlationId)
+                        .then(orderService.confirmOrder(orderId))
                         .then(kitchenService.createKitchenOrder(orderId))
-                .then(
-                        orderService.getOrder(orderId)
-                                .zipWith(orderService.getOrderItems(orderId).collectList())
-                                .flatMap(tuple -> {
+                        .then(
+                                orderService.getOrder(orderId)
+                                        .zipWith(orderService.getOrderItems(orderId).collectList())
+                                        .flatMap(tuple -> {
 
-                                    Order order = tuple.getT1();
-                                    List<OrderItem> items = tuple.getT2();
+                                            Order order = tuple.getT1();
+                                            List<OrderItem> items = tuple.getT2();
 
-                                    return receiptService.printReceipt(
-                                            order,
-                                            items,
-                                            payload.getTransactionId()
-                                    );
-                                })
-                )
+                                            return receiptService.printReceipt(
+                                                    order,
+                                                    items,
+                                                    payload.getTransactionId()
+                                            );
+                                        })
+                        ).then()
+        )
                 .doOnSuccess(v ->
                         Logger.info(correlationId, "ORDER", "EVENT_PAYMENT_FLOW_COMPLETE", "SUCCESS",
                                 "Order fully processed after payment")

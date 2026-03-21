@@ -6,6 +6,7 @@ import com.blind.orderflow.inventory.service.InventoryService;
 import com.blind.orderflow.order.service.OrderService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.PaymentFailedPayload;
+import com.blind.orderflow.shared.idempotency.IdempotencyService;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class PaymentFailedConsumer {
 
     private final InventoryService inventoryService;
     private final OrderService orderService;
+    private final IdempotencyService idempotencyService;
     private final ObjectMapper mapper;
 
     @KafkaListener(topics = KafkaConfig.PAYMENT_FAILED_TOPIC)
@@ -28,9 +30,15 @@ public class PaymentFailedConsumer {
 
         String orderId = payload.getOrderId();
         String correlationId = event.getCorrelationId();
+        String eventId = String.valueOf(event.getEventId());
 
-        inventoryService.releaseReservation(orderId)
-                .then(orderService.cancelOrder(orderId, payload.getReason(),correlationId))
+        idempotencyService.executeOnceVoid(
+                eventId,
+                correlationId,
+                "PAYMENT",
+                () -> inventoryService.releaseReservation(orderId)
+                        .then(orderService.cancelOrder(orderId, payload.getReason(),correlationId)).then()
+        )
                 .doOnSuccess(v ->
                         Logger.info(correlationId, "PAYMENT", "EVENT_FAILURE_FLOW_COMPLETE", "SUCCESS",
                                 "Inventory released and order cancelled")

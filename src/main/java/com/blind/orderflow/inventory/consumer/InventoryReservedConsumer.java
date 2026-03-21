@@ -4,6 +4,7 @@ import com.blind.orderflow.config.KafkaConfig;
 import com.blind.orderflow.payment.service.PaymentService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.InventoryReservedPayload;
+import com.blind.orderflow.shared.idempotency.IdempotencyService;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class InventoryReservedConsumer {
 
     private final PaymentService paymentService;
     private final ObjectMapper mapper;
+    private final IdempotencyService idempotencyService;
 
 
     @KafkaListener(topics = KafkaConfig.INVENTORY_RESERVED_TOPIC)
@@ -27,9 +29,15 @@ public class InventoryReservedConsumer {
 
         String orderId = payload.getOrderId();
         String correlationId = event.getCorrelationId();
+        String eventId = String.valueOf(event.getEventId());
 
 
-        paymentService.processPayment(orderId,correlationId)
+        idempotencyService.executeOnceVoid(
+                eventId,
+                correlationId,
+                "ORDER",
+                () ->  paymentService.processPayment(orderId,correlationId)
+        )
                 .doOnError(e -> Logger.error(
                         correlationId,
                         "PAYMENT",
