@@ -27,5 +27,13 @@ public class MenuItem {
 
     private Boolean available;
 
+    private String imageUrl;
+
+    private String category;
+
+    private List<String> tags;
+
+    private String description;
+
     private List<Ingredient> recipe;
 }

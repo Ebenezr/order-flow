@@ -11,4 +11,8 @@ public interface MenuRepository
     Mono<MenuItem> findByProductId(String productId);
 
     Flux<MenuItem> findByAvailableTrue();
+
+    Flux<MenuItem> findByTagsContaining(String tag);
+
+    Flux<MenuItem> findByCategoryAndAvailableTrue(String category);
 }
