@@ -4,6 +4,7 @@ import com.blind.orderflow.config.KafkaConfig;
 import com.blind.orderflow.inventory.service.InventoryService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.OrderCreatedPayload;
+import com.blind.orderflow.shared.idempotency.IdempotencyService;
 import com.blind.orderflow.shared.utils.logging.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class OrderCreatedConsumer {
 
     private final InventoryService inventoryService;
-
+    private final IdempotencyService idempotencyService;
     private final ObjectMapper mapper;
 
     @KafkaListener(topics = KafkaConfig.ORDER_CREATED_TOPIC)
@@ -26,8 +27,14 @@ public class OrderCreatedConsumer {
 
         String correlationId = event.getCorrelationId();
         String orderId = payload.getOrderId();
+        String eventId = String.valueOf(event.getEventId());
 
-        inventoryService.reserveStock(orderId,correlationId)
+        idempotencyService.executeOnceVoid(
+                eventId,
+                correlationId,
+                "INVENTORY",
+                () ->   inventoryService.reserveStock(orderId,correlationId)
+        )
                 .doOnSuccess(
                         v -> Logger.info(
                                 correlationId,
@@ -46,6 +53,9 @@ public class OrderCreatedConsumer {
                         )
                 )
                 .contextWrite(ctx -> ctx.put("correlationId", correlationId))
-                .subscribe();
+                .subscribe(
+                        null,
+                        e -> Logger.error(correlationId, "IDEMPOTENCY", "PIPELINE_ERROR", "ERROR", e.getMessage())
+                );
     }
 }
