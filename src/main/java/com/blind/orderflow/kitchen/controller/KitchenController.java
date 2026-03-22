@@ -14,40 +14,21 @@ public class KitchenController {
     private final KitchenService kitchenService;
 
     @GetMapping("/orders")
-    public Mono<?> getPendingOrders() {
+    public Mono<?> getKitchenOrders(
+            @RequestParam(defaultValue = "0") int currentPage,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false)String status
+    ) {
 
-        return kitchenService.getPendingOrders()
-                .collectList()
-                .flatMap(orders ->
-                        ResponseFactory.getRequestRefId()
-                                .flatMap(requestId ->
-                        ResponseFactory.success(orders, requestId)
-                                )
-                );
-    }
-
-    @GetMapping("/orders/status")
-    public Mono<?> getOrdersByStatus(@RequestParam String status) {
-        return kitchenService.getOrdersByStatus(status)
-                .collectList()
-                .flatMap(orders ->
-                        ResponseFactory.getRequestRefId()
-                                .flatMap(requestId ->
-                        ResponseFactory.success(orders, requestId)
-                                )
-                );
+        return kitchenService.getKitchenOrders(currentPage,pageSize,status)
+                .flatMap(ResponseFactory::successWithContext);
     }
 
     @PutMapping("/orders/{orderId}/start")
     public Mono<?> startPreparing(@PathVariable String orderId) {
 
         return kitchenService.startPreparing(orderId)
-                .flatMap(order ->
-                        ResponseFactory.getRequestRefId()
-                                .flatMap(requestId ->
-                        ResponseFactory.success(order, requestId))
-
-                );
+                .flatMap(ResponseFactory::successWithContext);
     }
 
     @PutMapping("/orders/{orderId}/ready")
