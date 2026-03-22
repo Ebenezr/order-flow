@@ -13,18 +13,6 @@ public class MenuQueryController {
 
     private final MenuService menuService;
 
-    @GetMapping
-    public Mono<?> getMenu() {
-
-        return menuService.getMenu()
-                .collectList()
-                .flatMap(menu ->
-                        ResponseFactory.getRequestRefId()
-                                .flatMap(requestId ->
-                        ResponseFactory.success(menu, requestId))
-                );
-    }
-
     @GetMapping("/grouped/tag")
     public Mono<?> getGroupedTags() {
         return menuService.getMenuByTags()
@@ -38,36 +26,6 @@ public class MenuQueryController {
                 .flatMap(ResponseFactory::successWithContext);
     }
 
-    @GetMapping("/tags/{tag}")
-    public Mono<?> getMenuByTags(@PathVariable String tag) {
-        return menuService.getByTag(tag)
-                .collectList()
-                .flatMap(ResponseFactory::successWithContext);
-
-    }
-
-    @GetMapping("/category/{category}")
-    public Mono<?> getMenuByCategory(@PathVariable String category) {
-        return menuService.getByCategory(category)
-                .collectList()
-                .flatMap(ResponseFactory::successWithContext);
-
-    }
-
-
-
-    @GetMapping("/available")
-    public Mono<?> getAvailableMenu() {
-
-        return menuService.getMenu()
-                .collectList()
-                .flatMap(menu ->
-                        ResponseFactory.getRequestRefId()
-                                .flatMap(requestId ->
-                        ResponseFactory.success(menu, requestId))
-                );
-    }
-
     @GetMapping("/{productId}")
     public Mono<?> getItem(@PathVariable String productId) {
 
@@ -79,15 +37,16 @@ public class MenuQueryController {
                 );
     }
 
-    @GetMapping("/paged")
+    @GetMapping()
     public Mono<?> getMenuPaged(
             @RequestParam(defaultValue = "0") int currentPage,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false)String category,
-            @RequestParam(required = false)String tag
+            @RequestParam(required = false)String tag,
+            @RequestParam(defaultValue = "true")Boolean available
     ) {
 
-        return menuService.getMenuPaged(pageSize, currentPage,category,tag)
+        return menuService.getMenuPaged(pageSize, currentPage,category,tag,available)
                 .flatMap(ResponseFactory::successWithContext);
     }
 }
