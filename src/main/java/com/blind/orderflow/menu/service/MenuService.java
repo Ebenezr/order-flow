@@ -11,7 +11,6 @@ import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -27,13 +26,13 @@ public class MenuService {
     private final MenuRepository menuRepository;
     private final ReactiveMongoTemplate mongoTemplate;
 
-    public Mono<PaginatedResponse<MenuItem>> getMenuPaged(int pageSize, int currentPage,String category,String tag) {
+    public Mono<PaginatedResponse<MenuItem>> getMenuPaged(int pageSize, int currentPage,String category,String tag,Boolean available) {
 
         LocalDateTime start = LocalDateTime.now();
 
         int skip = currentPage * pageSize;
 
-        Criteria criteria = Criteria.where("available").is(true);
+        Criteria criteria= new Criteria();
 
         if (category != null && !category.isBlank()) {
             criteria = criteria.and("category").is(category);
@@ -42,6 +41,10 @@ public class MenuService {
         if (tag != null && !tag.isBlank()) {
             tag = tag.trim().toUpperCase();
             criteria = criteria.and("tags").is(tag);
+        }
+
+        if (available != null) {
+            criteria = criteria.and("available").is(available);
         }
 
         Query query = new Query(criteria)
@@ -86,21 +89,6 @@ public class MenuService {
                         new NotFoundException("Menu item not found: " + productId)
                 ));
         return Logger.logMono(pipeline, "MENU", "GET_MENU_ITEM", start);
-    }
-
-    public Flux<MenuItem> getMenu() {
-
-        LocalDateTime start = LocalDateTime.now();
-        Flux<MenuItem> pipeline = menuRepository.findByAvailableTrue();
-        return Logger.logFlux(pipeline, "MENU", "GET_MENU", start);
-    }
-
-    public Flux<MenuItem> getByTag(String tag) {
-        return menuRepository.findByTagsContaining(tag);
-    }
-
-    public Flux<MenuItem> getByCategory(String category) {
-        return menuRepository.findByCategoryAndAvailableTrue(category);
     }
 
     public Mono<Map<String, List<MenuItem>>> getMenuByCategory() {
@@ -173,6 +161,8 @@ public class MenuService {
                     existing.setTags(item.getTags());
                     existing.setName(item.getName());
                     existing.setPrice(item.getPrice());
+                    existing.setPrice(item.getPrice());
+                    existing.setAvailable(item.getAvailable());
                     existing.setRecipe(item.getRecipe()); // important
 
                     return menuRepository.save(existing);
