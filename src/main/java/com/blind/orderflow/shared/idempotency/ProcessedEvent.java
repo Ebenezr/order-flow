@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 public class ProcessedEvent {
 
     @Id
+    private Long id;
     private String eventId;
-
+    private String consumerName;
     private LocalDateTime processedAt;
 }
