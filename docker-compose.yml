@@ -22,17 +22,17 @@ services:
     volumes:
       - kafka-data:/tmp/kraft-combined-logs
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: order-flow-kafka-ui
-    ports:
-      - "8085:8080"
-    environment:
-      DYNAMIC_CONFIG_ENABLED: "true"
-      KAFKA_CLUSTERS_0_NAME: order-flow
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-    depends_on:
-      - kafka
+#  kafka-ui:
+#    image: provectuslabs/kafka-ui:latest
+#    container_name: order-flow-kafka-ui
+#    ports:
+#      - "8085:8080"
+#    environment:
+#      DYNAMIC_CONFIG_ENABLED: "true"
+#      KAFKA_CLUSTERS_0_NAME: order-flow
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+#    depends_on:
+#      - kafka
 
   mongo:
     image: mongo:7
