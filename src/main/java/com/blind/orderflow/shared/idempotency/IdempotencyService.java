@@ -13,21 +13,38 @@ import java.util.function.Supplier;
 public class IdempotencyService {
 
     private final ProcessedEventRepository processedEventRepository;
+//
 
     public Mono<Void> executeOnceVoid(
             String eventId,
             String correlationId,
-            String module,
+            String consumerName,
             Supplier<Mono<Void>> action
     ) {
 
-        return processedEventRepository.existsById(eventId)
-                .flatMap(exists -> {
-
-                    if (exists) {
+        return processedEventRepository.save(
+                        ProcessedEvent.builder()
+                                .eventId(eventId)
+                                .processedAt(LocalDateTime.now())
+                                .consumerName(consumerName)
+                                .build()
+                )
+                .then(action.get())
+                .doOnSuccess(v ->
                         Logger.info(
                                 correlationId,
-                                module,
+                                consumerName,
+                                "EVENT_PROCESSED",
+                                "SUCCESS",
+                                "Processed event " + eventId
+                        )
+                )
+                .onErrorResume(e -> {
+
+                    if (isDuplicateKey(e)) {
+                        Logger.info(
+                                correlationId,
+                                consumerName,
                                 "EVENT_ALREADY_PROCESSED",
                                 "INFO",
                                 "Skipping duplicate event " + eventId
@@ -35,32 +52,21 @@ public class IdempotencyService {
                         return Mono.empty();
                     }
 
-                    Logger.info(
+                    Logger.error(
                             correlationId,
-                            module,
-                            "EVENT_RECORDING",
-                            "INFO",
-                            "Recording event " + eventId
+                            consumerName,
+                            "PIPELINE_ERROR",
+                            "ERROR",
+                            e.getMessage()
                     );
 
-                    return action.get()
-                            .then(
-                                    processedEventRepository.save(
-                                            ProcessedEvent.builder()
-                                                    .eventId(eventId)
-                                                    .processedAt(LocalDateTime.now())
-                                                    .build()
-                                    )
-                            )
-                            .doOnSuccess(v ->
-                                    Logger.info(
-                                            correlationId,
-                                            module,
-                                            "EVENT_RECORDED_SUCCESS",
-                                            "SUCCESS",
-                                            "Saved event " + eventId
-                                    )
-                            ).then();
+                    return Mono.error(e);
                 });
     }
+
+    private boolean isDuplicateKey(Throwable e) {
+        return e.getMessage() != null &&
+                e.getMessage().contains("Duplicate");
+    }
+
 }
