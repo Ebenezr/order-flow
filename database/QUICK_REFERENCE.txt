@@ -1,0 +1,54 @@
+# Quick Reference - Database Scripts
+
+## Files Created
+
+1. **schema.sql** - Main SQL schema with all 7 tables
+2. **initial_data.sql** - Sample inventory data (15 items)
+3. **mongodb_init.js** - MongoDB menu items collection (8 items)
+4. **SCHEMA_DOCUMENTATION.md** - Complete documentation
+5. **README.md** - Setup and usage guide
+
+## SQL Tables (7)
+
+1. **orders** - Main order records
+2. **order_items** - Line items per order
+3. **payment_transactions** - Payment tracking
+4. **receipts** - Receipt records
+5. **kitchen_orders** - Kitchen workflow
+6. **inventory** - Ingredient stock
+7. **inventory_reservations** - Inventory reservations
+
+## MongoDB (1)
+
+- **menu_items** - Menu items with embedded recipes
+
+## Quick Commands
+
+### MySQL Setup
+```bash
+mysql -u root -p order_flow < schema.sql
+mysql -u root -p order_flow < initial_data.sql
+```
+
+### MongoDB Setup
+```bash
+mongosh
+use order_flow
+load('mongodb_init.js')
+```
+
+## Tables Summary
+
+| Table | Entity | Fields | Purpose |
+|-------|--------|--------|---------|
+| orders | Order | 13 | Main orders |
+| order_items | OrderItem | 8 | Line items |
+| payment_transactions | PaymentTransaction | 7 | Payments |
+| receipts | Receipt | 12 | Receipts |
+| kitchen_orders | KitchenOrder | 5 | Kitchen tracking |
+| inventory | Inventory | 5 | Stock levels |
+| inventory_reservations | InventoryReservation | 8 | Reservations |
+| menu_items (MongoDB) | MenuItem | 9+ | Menu items |
+
+## All Set! ✓
+
