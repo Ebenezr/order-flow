@@ -38,6 +38,25 @@ public class GlobalErrorWebExceptionHandler implements WebExceptionHandler {
             return exchange.getResponse().writeWith(Mono.just(buffer));
         }
 
+        if (ex instanceof IllegalStateException) {
+
+            exchange.getResponse().setStatusCode(HttpStatus.CONFLICT);
+            exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+            String body = """
+                {
+                    "error": "CONFLICT",
+                    "message": "%s"
+                }
+                """.formatted(ex.getMessage());
+
+            DataBuffer buffer = exchange.getResponse()
+                    .bufferFactory()
+                    .wrap(body.getBytes(StandardCharsets.UTF_8));
+
+            return exchange.getResponse().writeWith(Mono.just(buffer));
+        }
+
         return Mono.error(ex); // let others handle
     }
 }

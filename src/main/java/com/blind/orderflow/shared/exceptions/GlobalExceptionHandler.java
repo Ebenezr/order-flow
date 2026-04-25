@@ -95,6 +95,15 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Object>> handleConflict(IllegalStateException ex) {
+        return ResponseFactory.error(
+                "CONFLICT",
+                ex.getMessage(),
+                org.springframework.http.HttpStatus.CONFLICT
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnhandled(Exception ex) {
         log.error("Unhandled exception: ", ex);

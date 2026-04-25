@@ -214,6 +214,45 @@ public class OrderService {
         return Logger.logMono(pipeline, "ORDER", "CANCEL_ORDER", start);
     }
 
+    /**
+     * Called by the payment-timeout scheduler.
+     * Cancels the order only if it is still in PENDING_PAYMENT state.
+     */
+    public Mono<Order> cancelOrderIfStillPending(String orderId, String correlationId) {
+
+        LocalDateTime start = LocalDateTime.now();
+
+        Mono<Order> pipeline = orderRepository.findByOrderId(orderId)
+                .flatMap(order -> {
+                    if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+                        Logger.info(
+                                correlationId,
+                                "ORDER",
+                                "TIMEOUT_SKIP",
+                                "INFO",
+                                "Order " + orderId + " no longer PENDING_PAYMENT (status=" + order.getStatus() + "), skipping timeout cancel"
+                        );
+                        return Mono.just(order);
+                    }
+
+                    Logger.info(
+                            correlationId,
+                            "ORDER",
+                            "PAYMENT_TIMEOUT",
+                            "INFO",
+                            "Payment timeout reached for order " + orderId + ", cancelling"
+                    );
+
+                    order.setStatus(OrderStatus.CANCELLED);
+                    order.setCancellationReason("Payment timeout — no payment received within 3 minutes");
+                    order.setUpdatedAt(LocalDateTime.now());
+
+                    return orderRepository.save(order);
+                });
+
+        return Logger.logMono(pipeline, "ORDER", "CANCEL_ORDER_IF_STILL_PENDING", start);
+    }
+
     public Mono<Order> confirmOrder(String orderId) {
 
         LocalDateTime start = LocalDateTime.now();

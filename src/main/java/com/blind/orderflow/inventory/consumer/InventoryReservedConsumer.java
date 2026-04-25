@@ -1,7 +1,7 @@
 package com.blind.orderflow.inventory.consumer;
 
 import com.blind.orderflow.config.KafkaConfig;
-import com.blind.orderflow.payment.service.PaymentService;
+import com.blind.orderflow.order.service.OrderService;
 import com.blind.orderflow.shared.events.BaseEvent;
 import com.blind.orderflow.shared.events.InventoryReservedPayload;
 import com.blind.orderflow.shared.idempotency.IdempotencyService;
@@ -10,15 +10,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
 public class InventoryReservedConsumer {
 
-    private final PaymentService paymentService;
+    private final OrderService orderService;
     private final ObjectMapper mapper;
     private final IdempotencyService idempotencyService;
 
+    private static final Duration PAYMENT_TIMEOUT = Duration.ofMinutes(3);
 
     @KafkaListener(topics = KafkaConfig.INVENTORY_RESERVED_TOPIC)
     public void handleInventoryReserved(BaseEvent<?> event) {
@@ -36,21 +40,30 @@ public class InventoryReservedConsumer {
                 eventId,
                 correlationId,
                 "ORDER",
-                () ->  paymentService.processPayment(orderId,correlationId)
+                () -> {
+                    Logger.info(
+                            correlationId,
+                            "ORDER",
+                            "AWAITING_PAYMENT",
+                            "INFO",
+                            "Inventory reserved. Waiting for client payment (timeout=" + PAYMENT_TIMEOUT.toMinutes() + "min)"
+                    );
+
+
+                    Mono.delay(PAYMENT_TIMEOUT)
+                            .then(orderService.cancelOrderIfStillPending(orderId, correlationId))
+                            .contextWrite(ctx -> ctx.put("correlationId", correlationId))
+                            .subscribe();
+
+                    return Mono.empty();
+                }
         )
                 .doOnError(e -> Logger.error(
                         correlationId,
-                        "PAYMENT",
-                        "ERROR_PROCESS_PAYMENT",
+                        "ORDER",
+                        "INVENTORY_RESERVED_ERROR",
                         "ERROR",
                         e.getMessage()
-                ))
-                .doOnSuccess(v -> Logger.info(
-                        correlationId,
-                        "PAYMENT",
-                        "PROCESS_PAYMENT_COMPLETED",
-                        "INFO",
-                        "Payment flow finished (check next events for result)"
                 ))
                 .contextWrite(ctx -> ctx.put("correlationId", correlationId))
                 .subscribe();

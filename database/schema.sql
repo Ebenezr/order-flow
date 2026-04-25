@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     transaction_id VARCHAR(255) NOT NULL UNIQUE,
     order_id VARCHAR(255) NOT NULL,
+    payment_method VARCHAR(20) NOT NULL DEFAULT 'CARD',
+    masked_detail VARCHAR(50),
     amount DECIMAL(19, 2) NOT NULL,
     status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

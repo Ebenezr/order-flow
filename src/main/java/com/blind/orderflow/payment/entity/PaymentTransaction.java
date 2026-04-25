@@ -21,6 +21,10 @@ public class PaymentTransaction {
 
     private String orderId;
 
+    private String paymentMethod;
+
+    private String maskedDetail;
+
     private BigDecimal amount;
 
     private String status;
